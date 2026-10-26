@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<script src="../shell.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>깨끗한 시험지 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fafafa;--surface:#fff;--ink:#18181b;--mute:#71717a;--line:#e4e4e7;--line-strong:#d4d4d8;--hover:#f4f4f5;--stage:#ececee;--accent:#dc2626;--ok:#15803d;--focus:#2563eb;--btn:#18181b;--btn-fg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f0f11;--surface:#18181b;--ink:#f4f4f5;--mute:#a1a1aa;--line:#27272a;--line-strong:#3f3f46;--hover:#1f1f23;--stage:#09090b;--accent:#f87171;--ok:#4ade80;--focus:#60a5fa;--btn:#f4f4f5;--btn-fg:#18181b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f0f11;--surface:#18181b;--ink:#f4f4f5;--mute:#a1a1aa;--line:#27272a;--line-strong:#3f3f46;--hover:#1f1f23;--stage:#09090b;--accent:#f87171;--ok:#4ade80;--focus:#60a5fa;--btn:#f4f4f5;--btn-fg:#18181b;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans KR",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:28px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px));min-height:100vh}
+.shell{max-width:1120px;margin:0 auto}
+h1,h2,h3,p{margin:0}
+h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.lead{color:var(--mute);font-size:14px;margin-top:4px}
+.mini{font-size:12.5px;color:var(--mute);line-height:1.55}
+.ico{display:inline-flex;width:18px;height:18px;flex:none}
+.ico svg{width:100%;height:100%}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+
+.steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;padding:0;margin:0 0 16px;font-size:13px;color:var(--mute)}
+.steps li{display:flex;align-items:center;gap:8px}
+.steps i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;border:1px solid var(--line-strong);font-variant-numeric:tabular-nums}
+.steps i .ico{width:13px;height:13px}
+.steps li.on{color:var(--ink);font-weight:500}
+.steps li.on i{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.steps li.done{color:var(--ink)}
+.steps li.done i{background:var(--ok);color:#fff;border-color:var(--ok)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:500 14px "Noto Sans KR",system-ui,sans-serif;cursor:pointer;text-align:center;text-decoration:none}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--btn);color:var(--btn-fg);border-color:var(--btn)}
+.btn.small{min-height:32px;padding:0 10px;font-size:13px;gap:6px}
+.btn.small .ico{width:16px;height:16px}
+.btn.danger{color:var(--accent)}
+.btn.link{border:0;background:none;color:var(--mute);min-height:0;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.thumb:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.btn-row.center{justify-content:center}
+input[type=text],input[type=password],select{height:40px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);padding:0 10px;font:inherit;width:100%;min-width:0}
+input[type=range]{width:100%;accent-color:var(--ink);margin:2px 0}
+.check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;cursor:pointer}
+.check input{width:17px;height:17px;accent-color:var(--ink)}
+hr{border:0;border-top:1px solid var(--line);margin:2px 0}
+
+.drop{display:grid;justify-items:center;gap:14px;text-align:center;padding:48px 20px;background:var(--surface);border:1.5px dashed var(--line-strong);border-radius:12px}
+.drop.over{border-color:var(--focus)}
+.drop h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.drop p{max-width:48ch;color:var(--mute)}
+.drop-ico{width:52px;height:52px;border-radius:12px;display:grid;place-items:center;background:var(--hover);color:var(--ink)}
+.drop-ico .ico{width:26px;height:26px}
+
+.work{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.stage{background:var(--stage);border:1px solid var(--line);border-radius:12px;display:grid;place-items:center;padding:12px;min-height:260px;overflow:hidden}
+.stage canvas{display:block;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);max-width:100%;touch-action:none}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel-head h2{font-size:16px;font-weight:700}
+.field{display:grid;gap:8px;min-width:0}
+.field label,.field .lab{font-weight:500;font-size:14px}
+.field-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.val{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.panel-foot{display:flex;gap:8px;margin-top:4px}
+.panel-foot .primary{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 14px;font:500 13px "Noto Sans KR",system-ui,sans-serif;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--btn);color:var(--btn-fg)}
+
+.strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:6px;align-items:center}
+.thumb{position:relative;flex:0 0 auto;width:72px;height:96px;padding:0;border:1px solid var(--line-strong);border-radius:6px;background:#fff;cursor:pointer;overflow:hidden}
+.thumb canvas{width:100%;height:100%;display:block}
+.thumb span{position:absolute;left:4px;top:4px;min-width:20px;height:20px;border-radius:10px;background:var(--btn);color:var(--btn-fg);font-size:11.5px;display:grid;place-items:center;font-variant-numeric:tabular-nums;padding:0 5px}
+.thumb.on{outline:2px solid var(--ink);outline-offset:1px}
+.addthumb{flex:0 0 auto;width:72px;height:96px;border:1.5px dashed var(--line-strong);border-radius:6px;background:transparent;color:var(--mute);cursor:pointer;display:grid;place-items:center;font:500 12px "Noto Sans KR",system-ui,sans-serif}
+
+.finish{display:grid;justify-items:center;gap:12px;text-align:center;padding:44px 20px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.finish h2{font-size:20px;font-weight:700}
+.finish p{color:var(--mute);max-width:50ch}
+.done-mark{width:48px;height:48px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center}
+.done-mark.warn{background:var(--accent)}
+.done-mark .ico{width:24px;height:24px}
+.pages{display:flex;gap:14px;overflow-x:auto;max-width:100%;padding:8px 2px}
+.pages img{height:220px;width:auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+
+/* admin */
+.admin{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.admin-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:16px}
+.admin-head h2{font-size:18px;font-weight:700}
+.login{display:grid;gap:10px;max-width:360px}
+.entries{display:grid;gap:12px}
+.entry{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px}
+.entry-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between}
+.entry-head b{font-weight:700}
+.entry-imgs{display:flex;gap:8px;overflow-x:auto}
+.entry-imgs a{flex:0 0 auto;display:grid;gap:4px;justify-items:center;font-size:12px;color:var(--mute);text-decoration:none}
+.entry-imgs img{height:130px;width:auto;min-width:60px;background:var(--hover);border:1px solid var(--line);border-radius:4px}
+.empty{padding:32px 0;text-align:center;color:var(--mute)}
+.foot{margin-top:28px;display:flex;justify-content:center}
+
+.toast{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(16px);background:var(--btn);color:var(--btn-fg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:calc(100vw - 32px);z-index:40;text-align:center}
+.toast.show{opacity:1;transform:none}
+#print-area{display:none}
+
+@media (max-width:860px){.work{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{
+  @page{size:A4;margin:10mm}
+  html,body{background:#fff;padding:0;margin:0}
+  .shell,.toast{display:none!important}
+  #print-area{display:block}
+  #print-area .pp{height:276mm;display:flex;align-items:flex-start;justify-content:center;break-after:page;page-break-after:always}
+  #print-area .pp:last-child{break-after:auto;page-break-after:auto}
+  #print-area img{max-width:100%;max-height:100%;object-fit:contain}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div>
+      <h1>깨끗한 시험지 만들기</h1>
+      <p class="lead">필기와 채점 자국을 지우고 문제만 남겨 다시 출력해요.</p>
+    </div>
+  </header>
+
+  <main id="view-make">
+    <ol class="steps" id="steps" aria-label="진행 단계">
+      <li data-s="1"><i>1</i>사진 올리기</li>
+      <li data-s="2"><i>2</i>필기 지우기</li>
+      <li data-s="3"><i>3</i>시험 정보 적고 완성</li>
+    </ol>
+
+    <div id="st-drop" class="drop">
+      <div class="drop-ico"><span class="ico" data-ico="image"></span></div>
+      <h2>시험지 사진을 올려 주세요</h2>
+      <p>필기나 채점 표시가 있는 시험지를 찍거나 사진 파일을 끌어다 놓으세요. 여러 쪽을 한 번에 올려도 돼요.</p>
+      <div class="btn-row center">
+        <button class="btn primary" id="btn-cam" type="button"><span class="ico" data-ico="camera"></span>사진 찍기</button>
+        <button class="btn" id="btn-pick" type="button"><span class="ico" data-ico="image"></span>파일 선택</button>
+      </div>
+      <input type="file" id="file-cam" accept="image/*" capture="environment" hidden>
+      <input type="file" id="file-pick" accept="image/*" multiple hidden>
+      <p class="mini">완성하면 올린 사진과 깨끗해진 시험지가 기출문제 보관용으로 서버에 저장돼요. 저장된 사진은 관리자만 볼 수 있어요.</p>
+    </div>
+
+    <div id="st2" hidden>
+      <div class="strip" id="strip" aria-label="올린 쪽 목록"></div>
+      <div class="work">
+        <div class="stage" id="stage"><canvas id="cv" aria-label="필기 지우기 화면"></canvas></div>
+        <aside class="panel">
+          <div class="panel-head"><h2>필기 지우기</h2><span class="mini" id="p-index"></span></div>
+          <div class="field">
+            <div class="field-row"><label for="angle">기울기</label><output id="angle-out" class="val">0.0°</output></div>
+            <input type="range" id="angle" min="-15" max="15" step="0.1" value="0">
+            <div class="btn-row">
+              <button class="btn small" id="btn-auto-angle" type="button"><span class="ico" data-ico="target"></span>자동 맞춤</button>
+              <button class="btn small" id="btn-rot-l" type="button" aria-label="왼쪽으로 90도 돌리기"><span class="ico" data-ico="rotl"></span>90°</button>
+              <button class="btn small" id="btn-rot-r" type="button" aria-label="오른쪽으로 90도 돌리기"><span class="ico" data-ico="rotr"></span>90°</button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="auto-fix" checked>밝기·그림자 보정</label>
+            <div class="field-row"><label for="bright">밝기</label><output id="bright-out" class="val">0</output></div>
+            <input type="range" id="bright" min="-50" max="50" step="1" value="0">
+          </div>
+          <hr>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="fx-color" checked>색깔 필기·채점 자국 지우기</label>
+            <input type="range" id="fx-color-s" min="0" max="100" value="50" aria-label="색깔 필기 지우기 강도">
+            <p class="mini">빨간 채점 표시, 파란 펜, 형광펜 자국을 지워요. 강도를 올리면 옅은 색까지 지워요.</p>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="fx-pencil">연한 연필 자국 지우기</label>
+            <input type="range" id="fx-pencil-s" min="0" max="100" value="50" aria-label="연필 자국 지우기 강도">
+            <p class="mini">인쇄 글씨보다 연한 자국만 골라 지워요.</p>
+          </div>
+          <div class="field">
+            <div class="field-row"><label for="brush">지우개 크기</label><output id="brush-out" class="val">28</output></div>
+            <input type="range" id="brush" min="8" max="120" value="28">
+            <p class="mini">검은 펜 필기는 사진 위를 문지르면 지워져요.</p>
+            <div class="btn-row">
+              <button class="btn small" id="btn-undo" type="button"><span class="ico" data-ico="undo"></span>되돌리기</button>
+              <button class="btn small danger" id="btn-del-page" type="button"><span class="ico" data-ico="trash"></span>이 쪽 빼기</button>
+            </div>
+          </div>
+          <div class="panel-foot">
+            <button class="btn" id="btn-restart" type="button">처음으로</button>
+            <button class="btn primary" id="btn-to3" type="button">다음 →</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="st3" hidden>
+      <div class="work">
+        <div class="stage"><div class="pages" id="preview"></div></div>
+        <aside class="panel">
+          <div class="panel-head"><h2>시험 정보</h2></div>
+          <div class="field"><label for="m-school">학교</label><input type="text" id="m-school" maxlength="40" placeholder="예: 한빛중학교" autocomplete="off"></div>
+          <div class="grid2">
+            <div class="field"><label for="m-grade">학년</label>
+              <select id="m-grade"><option value="">선택</option><option>중1</option><option>중2</option><option>중3</option><option>고1</option><option>고2</option><option>고3</option><option>기타</option></select></div>
+            <div class="field"><label for="m-subject">과목</label><input type="text" id="m-subject" maxlength="20" placeholder="예: 영어" autocomplete="off"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label for="m-year">연도</label><input type="text" id="m-year" maxlength="4" inputmode="numeric" autocomplete="off"></div>
+            <div class="field"><label for="m-term">시험</label>
+              <select id="m-term"><option value="">선택</option><option>1학기 중간</option><option>1학기 기말</option><option>2학기 중간</option><option>2학기 기말</option><option>모의고사</option><option>기타</option></select></div>
+          </div>
+          <div class="field"><label for="m-note">메모 (선택)</label><input type="text" id="m-note" maxlength="60" autocomplete="off"></div>
+          <p class="mini">완성을 누르면 올린 사진과 깨끗해진 시험지가 서버에 저장되고, 바로 인쇄하거나 PDF로 저장할 수 있어요. 저장된 사진은 관리자만 볼 수 있어요.</p>
+          <div class="panel-foot">
+            <button class="btn" id="btn-back2" type="button" aria-label="필기 지우기로 돌아가기">←</button>
+            <button class="btn primary" id="btn-finish" type="button">완성하기</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="st-done" class="finish" hidden>
+      <div class="done-mark" id="done-mark"><span class="ico" data-ico="check"></span></div>
+      <h2 id="done-title">깨끗한 시험지를 만들었어요</h2>
+      <p id="done-sub"></p>
+      <div class="pages" id="done-pages"></div>
+      <div class="btn-row center">
+        <button class="btn primary" id="btn-print" type="button"><span class="ico" data-ico="print"></span>인쇄 · PDF로 저장</button>
+        <button class="btn" id="btn-retry" type="button" hidden>다시 서버에 저장</button>
+        <button class="btn" id="btn-new" type="button">다른 시험지 만들기</button>
+      </div>
+    </div>
+
+    <div class="foot"><button class="btn link" id="btn-admin" type="button">관리자</button></div>
+  </main>
+
+  <main id="view-admin" hidden>
+    <section class="admin">
+      <div class="admin-head">
+        <h2>저장된 기출문제</h2>
+        <div class="btn-row">
+          <button class="btn small" id="btn-reload" type="button" hidden>새로고침</button>
+          <button class="btn small" id="btn-logout" type="button" hidden>잠그기</button>
+          <button class="btn small" id="btn-admin-back" type="button">← 돌아가기</button>
+        </div>
+      </div>
+      <form class="login" id="login">
+        <p class="mini">서버 주인 비밀번호를 넣어야 볼 수 있어요. 비밀번호는 이 탭을 닫으면 잊어버려요.</p>
+        <input type="password" id="admin-pw" autocomplete="current-password" placeholder="관리자 비밀번호" aria-label="관리자 비밀번호">
+        <button class="btn primary" type="submit">열기</button>
+        <p class="mini" id="login-msg" role="alert"></p>
+      </form>
+      <div id="admin-list" hidden></div>
+    </section>
+  </main>
+</div>
+
+<div id="print-area" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const dprr = () => Math.min(2, window.devicePixelRatio || 1);
+const MAX_SIDE = 2400;
+const MAX_PAGES = 20;
+const blobOf = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+const raf = fn => { let q = false; return (...a) => { if (q) return; q = true; requestAnimationFrame(() => { q = false; fn(...a); }); }; };
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+const ICONS = {
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
+  rotl:'<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  rotr:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  target:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H8"/>',
+  print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  alert:'<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>'
+};
+const svg = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>';
+const ico = n => '<span class="ico">' + svg(n) + '</span>';
+$$('[data-ico]').forEach(el => { el.innerHTML = svg(el.dataset.ico); });
+
+let toastT;
+function toast(msg, ms = 3200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); if (ms) toastT = setTimeout(() => t.classList.remove('show'), ms);
+}
+const hideToast = () => { clearTimeout(toastT); $('#toast').classList.remove('show'); };
+
+/* ------------------------------------------------------------------ shared with 오답노트 (사진 보정·필기 지우기) */
+function fitCanvas(cv, iw, ih, host, maxScale = 1) {
+  const cs = getComputedStyle(host);
+  const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const aw = Math.max(120, host.clientWidth - pad);
+  const ah = Math.max(220, Math.min(window.innerHeight * 0.78, 880));
+  const scale = Math.min(aw / iw, ah / ih, maxScale);
+  const cw = Math.max(1, Math.round(iw * scale)), ch = Math.max(1, Math.round(ih * scale));
+  const r = dprr();
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  const pw = Math.round(cw * r), ph = Math.round(ch * r);
+  if (cv.width !== pw) cv.width = pw;
+  if (cv.height !== ph) cv.height = ph;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  return { ctx, scale: cw / iw, cw, ch };
+}
+function loadImgEl(file) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); res(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('img')); };
+    im.src = u;
+  });
+}
+async function fileToCanvas(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) { bmp = await loadImgEl(file); }
+  const bw = bmp.naturalWidth || bmp.width, bh = bmp.naturalHeight || bmp.height;
+  const sc = Math.min(1, MAX_SIDE / Math.max(bw, bh));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bw * sc); cv.height = Math.round(bh * sc);
+  const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(bmp, 0, 0, cv.width, cv.height);
+  if (bmp.close) bmp.close();
+  return cv;
+}
+function shrinkCanvas(cv) {
+  const sc = Math.min(1, MAX_SIDE / Math.max(cv.width, cv.height));
+  if (sc >= 1) return cv;
+  const o = document.createElement('canvas'); o.width = Math.round(cv.width * sc); o.height = Math.round(cv.height * sc);
+  const x = o.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(cv, 0, 0, o.width, o.height); return o;
+}
+function buildBgGrid(cv) {
+  const c = 32, w = cv.width, h = cv.height, gw = Math.ceil(w / c), gh = Math.ceil(h / c);
+  const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+  const g = new Float32Array(gw * gh * 3);
+  const h0 = new Uint16Array(256), h1 = new Uint16Array(256), h2 = new Uint16Array(256);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    h0.fill(0); h1.fill(0); h2.fill(0);
+    const x0 = gx * c, x1 = Math.min(w, x0 + c), y0 = gy * c, y1 = Math.min(h, y0 + c);
+    let n = 0;
+    for (let y = y0; y < y1; y++) { let i = (y * w + x0) * 4; for (let x = x0; x < x1; x++, i += 4) { h0[d[i]]++; h1[d[i + 1]]++; h2[d[i + 2]]++; n++; } }
+    const need = n * 0.15;
+    const q = hist => { let acc = 0, v = 255; for (; v > 0; v--) { acc += hist[v]; if (acc >= need) break; } return v; };
+    const o = (gy * gw + gx) * 3; g[o] = q(h0); g[o + 1] = q(h1); g[o + 2] = q(h2);
+  }
+  // 3x3 max (fills text-heavy cells from the paper around them), then 3x3 blur
+  const mx = new Float32Array(g.length), bl = new Float32Array(g.length);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) for (let k = 0; k < 3; k++) {
+    let m = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const yy = clamp(gy + dy, 0, gh - 1), xx = clamp(gx + dx, 0, gw - 1); const v = g[(yy * gw + xx) * 3 + k]; if (v > m) m = v;
+    }
+    mx[(gy * gw + gx) * 3 + k] = Math.max(m, 40);
+  }
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) for (let k = 0; k < 3; k++) {
+    let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const yy = clamp(gy + dy, 0, gh - 1), xx = clamp(gx + dx, 0, gw - 1); s += mx[(yy * gw + xx) * 3 + k]; n++;
+    }
+    bl[(gy * gw + gx) * 3 + k] = s / n;
+  }
+  return { grid: bl, gw, gh, c };
+}
+function applyNorm(src, bg, hi) {
+  const w = src.width, h = src.height;
+  const id = src.getContext('2d').getImageData(0, 0, w, h), d = id.data;
+  const { grid, gw, gh, c } = bg;
+  const cx0 = new Int32Array(w), cx1 = new Int32Array(w), ctf = new Float32Array(w);
+  for (let x = 0; x < w; x++) {
+    const f = (x + 0.5) / c - 0.5; let a = Math.floor(f); const t = f - a; let b = a + 1;
+    a = clamp(a, 0, gw - 1); b = clamp(b, 0, gw - 1); cx0[x] = a * 3; cx1[x] = b * 3; ctf[x] = t;
+  }
+  const lo = 12, kk = 255 / (hi - lo);
+  for (let y = 0; y < h; y++) {
+    const f = (y + 0.5) / c - 0.5; let a = Math.floor(f); const ty = f - a; let b = a + 1;
+    a = clamp(a, 0, gh - 1); b = clamp(b, 0, gh - 1);
+    const ra = a * gw * 3, rb = b * gw * 3;
+    for (let x = 0; x < w; x++) {
+      const t = ctf[x], u = 1 - t, v = 1 - ty, p = (y * w + x) * 4, i0 = cx0[x], i1 = cx1[x];
+      for (let k = 0; k < 3; k++) {
+        const bgv = (grid[ra + i0 + k] * u + grid[ra + i1 + k] * t) * v + (grid[rb + i0 + k] * u + grid[rb + i1 + k] * t) * ty;
+        let o = (d[p + k] / bgv * 255 - lo) * kk;
+        d[p + k] = o > 255 ? 255 : o < 0 ? 0 : o;
+      }
+    }
+  }
+  const out = document.createElement('canvas'); out.width = w; out.height = h;
+  out.getContext('2d').putImageData(id, 0, 0); return out;
+}
+function quarterCanvas(cv, q) {
+  q = ((q % 4) + 4) % 4; if (q === 0) return cv;
+  const r = document.createElement('canvas'); const sw = q % 2 === 1;
+  r.width = sw ? cv.height : cv.width; r.height = sw ? cv.width : cv.height;
+  const x = r.getContext('2d'); x.translate(r.width / 2, r.height / 2); x.rotate(q * Math.PI / 2); x.drawImage(cv, -cv.width / 2, -cv.height / 2); return r;
+}
+function renderFine(qc, deg) {
+  const c = document.createElement('canvas'); c.width = qc.width; c.height = qc.height;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.translate(c.width / 2, c.height / 2); x.rotate(deg * Math.PI / 180); x.imageSmoothingQuality = 'high';
+  x.drawImage(qc, -qc.width / 2, -qc.height / 2); return c;
+}
+function detectSkew(cv) {
+  const sc = Math.min(1, 700 / cv.width), w = Math.round(cv.width * sc), h = Math.round(cv.height * sc);
+  const t = document.createElement('canvas'); t.width = w; t.height = h; const tx = t.getContext('2d'); tx.drawImage(cv, 0, 0, w, h);
+  const d = tx.getImageData(0, 0, w, h).data; const pts = [];
+  const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
+  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) { const p = (y * w + x) * 4; const l = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8; if (l < 130) pts.push(x, y); }
+  if (pts.length < 800) return 0;
+  const N = pts.length / 2, stride = Math.max(1, Math.floor(N / 30000));
+  const score = deg => {
+    const r = deg * Math.PI / 180, s = Math.sin(r), c = Math.cos(r), off = Math.ceil(w * Math.abs(s)) + 2;
+    const bins = new Float64Array(h + off * 2 + 6);
+    for (let i = 0; i < N; i += stride) { const y = pts[i * 2] * s + pts[i * 2 + 1] * c; bins[Math.floor(y) + off]++; }
+    let sum = 0; for (let i = 0; i < bins.length; i++) sum += bins[i] * bins[i]; return sum;
+  };
+  let best = 0, bs = -1;
+  for (let a = -12; a <= 12.001; a += 0.5) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+  const c0 = best; for (let a = c0 - 0.5; a <= c0 + 0.5001; a += 0.1) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+  return Math.round(best * 10) / 10;
+}
+const hiFromBright = b => 240 - b;
+/* ------------------------------------------------------------------ step 3: clean up */
+/* Whiten every flagged pixel, plus a 2px ring around them. The ring only takes light pixels (soft edges of
+   the stroke), so dark printed glyphs that sit next to a removed mark keep their cores. */
+function eraseMask(d, w, h, m, ring) {
+  const n = w * h; let cur = m;
+  for (let pass = 0; pass < ring; pass++) {
+    const nx = new Uint8Array(cur);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!cur[y * w + x]) continue;
+      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx >= 0 && xx < w) nx[yy * w + xx] = 1; } }
+    }
+    cur = nx;
+  }
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (!cur[i]) continue;
+    if (!m[i] && ((d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8) < 140) continue;
+    d[p] = 255; d[p + 1] = 255; d[p + 2] = 255;
+  }
+}
+function removeColor(id, s) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, T = Math.round(80 - s * 0.55);
+  const m = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const r = d[p], g = d[p + 1], b = d[p + 2];
+    const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if (hi - lo > T) m[i] = 1;
+  }
+  eraseMask(d, w, h, m, 2);
+}
+function removePencil(id, s) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, cut = Math.round(150 - s * 0.7), INK = 235;
+  const lum = new Uint8Array(n); for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8;
+  const label = new Int32Array(n), stack = new Int32Array(n), mins = [0]; let nl = 0;
+  for (let i = 0; i < n; i++) {
+    if (lum[i] >= INK || label[i]) continue;
+    nl++; let min = lum[i], sp = 0; stack[sp++] = i; label[i] = nl;
+    while (sp) {
+      const j = stack[--sp]; if (lum[j] < min) min = lum[j];
+      const x = j % w, y = (j - x) / w;
+      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (label[k] || lum[k] >= INK) continue; label[k] = nl; stack[sp++] = k; } }
+    }
+    mins[nl] = min;
+  }
+  const m = new Uint8Array(n); let any = false;
+  for (let i = 0; i < n; i++) { const L = label[i]; if (L && mins[L] > cut) { m[i] = 1; any = true; } }
+  if (any) eraseMask(d, w, h, m, 2);
+}
+
+/* ------------------------------------------------------------------ state */
+// 한 쪽(page)마다 원본, 보정값, 지우기 설정, 지우개 자국을 따로 들고 있어요.
+const S = { step: 'drop', pages: [], active: 0, brush: 28, scale: 1, hover: null, results: null, uploaded: false };
+const cur = () => S.pages[S.active];
+
+function newPage(cv, file) {
+  const src = shrinkCanvas(cv);
+  const p = { src, bg: buildBgGrid(src), quarter: 0, angle: 0, autoFix: true, bright: 0,
+    fx: { color: true, colorS: 50, pencil: false, pencilS: 50 }, strokes: [], corrected: null, geoKey: '', base: null, baseKey: '', final: null, name: file && file.name || '' };
+  ensureCorrected(p);
+  const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; p.geoKey = '';
+  ensureCorrected(p);
+  return p;
+}
+// 기울기·회전·밝기를 반영한 사진. 바뀌면 그 위의 지우기 결과도 다시 만들어요.
+function ensureCorrected(p) {
+  const key = [p.quarter, p.angle, p.autoFix, p.bright].join('|');
+  if (p.corrected && p.geoKey === key) return;
+  const norm = p.autoFix ? applyNorm(p.src, p.bg, hiFromBright(p.bright)) : p.src;
+  const c = renderFine(quarterCanvas(norm, p.quarter), p.angle);
+  c.getContext('2d', { willReadFrequently: true });
+  p.corrected = c; p.geoKey = key; p.base = null;
+}
+function ensureBase(p) {
+  ensureCorrected(p);
+  const key = [p.geoKey, p.fx.color, p.fx.colorS, p.fx.pencil, p.fx.pencilS].join('|');
+  if (p.base && p.baseKey === key) return;
+  const w = p.corrected.width, h = p.corrected.height; const id = p.corrected.getContext('2d').getImageData(0, 0, w, h);
+  if (p.fx.color) removeColor(id, p.fx.colorS);
+  if (p.fx.pencil) removePencil(id, p.fx.pencilS);
+  const b = document.createElement('canvas'); b.width = w; b.height = h; b.getContext('2d').putImageData(id, 0, 0);
+  p.base = b; p.baseKey = key;
+}
+function renderFinal(p) {
+  ensureBase(p);
+  if (!p.final || p.final.width !== p.base.width || p.final.height !== p.base.height) { p.final = document.createElement('canvas'); p.final.width = p.base.width; p.final.height = p.base.height; }
+  const x = p.final.getContext('2d'); x.clearRect(0, 0, p.final.width, p.final.height); x.drawImage(p.base, 0, 0);
+  x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round';
+  for (const s of p.strokes) {
+    if (s.pts.length <= 2) { x.beginPath(); x.arc(s.pts[0], s.pts[1], s.size / 2, 0, Math.PI * 2); x.fill(); continue; }
+    x.lineWidth = s.size; x.beginPath(); x.moveTo(s.pts[0], s.pts[1]); for (let i = 2; i < s.pts.length; i += 2) x.lineTo(s.pts[i], s.pts[i + 1]); x.stroke();
+  }
+}
+
+/* ------------------------------------------------------------------ steps */
+function setStep(name) {
+  S.step = name; hideToast();
+  $('#st-drop').hidden = name !== 'drop'; $('#st2').hidden = name !== '2'; $('#st3').hidden = name !== '3'; $('#st-done').hidden = name !== 'done';
+  const c = { '2': 2, '3': 3, done: 4 }[name] || 1;
+  $$('#steps li').forEach(li => {
+    const s = +li.dataset.s; li.className = s === c ? 'on' : (s < c ? 'done' : '');
+    $('i', li).innerHTML = s < c ? ico('check') : String(s);
+    if (s === c) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+  if (name === '2') { renderStrip(); showPage(); }
+  window.scrollTo({ top: 0 });
+}
+
+/* ------------------------------------------------------------------ loading photos */
+async function addFiles(list) {
+  const files = [...list].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(f.name));
+  if (!files.length) { toast('이미지 파일만 올릴 수 있어요.'); return; }
+  const room = MAX_PAGES - S.pages.length;
+  if (room <= 0) { toast('한 번에 ' + MAX_PAGES + '쪽까지 만들 수 있어요.'); return; }
+  if (files.length > room) toast('한 번에 ' + MAX_PAGES + '쪽까지라 앞의 ' + room + '장만 올렸어요.');
+  const first = S.pages.length; let bad = 0;
+  for (let i = 0; i < Math.min(files.length, room); i++) {
+    toast('사진을 불러오는 중… ' + (i + 1) + ' / ' + Math.min(files.length, room), 0);
+    try { S.pages.push(newPage(await fileToCanvas(files[i]), files[i])); } catch (e) { bad++; }
+    await new Promise(r => setTimeout(r));
+  }
+  hideToast();
+  if (bad) toast(bad + '장은 열 수 없었어요. JPG나 PNG로 다시 시도해 주세요.');
+  if (S.pages.length > first) { S.active = first; S.uploaded = false; setStep('2'); }
+}
+
+/* ------------------------------------------------------------------ step 2: clean up */
+function syncPanel() {
+  const p = cur(); if (!p) return;
+  $('#angle').value = p.angle; $('#angle-out').textContent = (p.angle > 0 ? '+' : '') + p.angle.toFixed(1) + '°';
+  $('#auto-fix').checked = p.autoFix; $('#bright').value = p.bright; $('#bright-out').textContent = String(p.bright);
+  $('#fx-color').checked = p.fx.color; $('#fx-color-s').value = p.fx.colorS;
+  $('#fx-pencil').checked = p.fx.pencil; $('#fx-pencil-s').value = p.fx.pencilS;
+  $('#p-index').textContent = S.pages.length > 1 ? (S.active + 1) + ' / ' + S.pages.length + '쪽' : '';
+  $('#btn-undo').disabled = !p.strokes.length;
+}
+function draw() {
+  const p = cur(); if (!p || $('#st2').hidden) return;
+  renderFinal(p);
+  const cv = $('#cv'); const { ctx, scale, cw, ch } = fitCanvas(cv, p.final.width, p.final.height, $('#stage'));
+  S.scale = scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(p.final, 0, 0, cw, ch);
+  if (S.hover) { ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(S.hover.x * scale, S.hover.y * scale, Math.max(3, S.brush / 2), 0, Math.PI * 2); ctx.stroke(); }
+}
+function drawThumb(c, p) {
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  const src = p.final || p.corrected, s = Math.min(c.width / src.width, c.height / src.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(src, (c.width - src.width * s) / 2, (c.height - src.height * s) / 2, src.width * s, src.height * s);
+}
+function renderStrip() {
+  const el = $('#strip'); el.innerHTML = '';
+  S.pages.forEach((p, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'thumb' + (i === S.active ? ' on' : ''); b.setAttribute('aria-label', (i + 1) + '쪽');
+    const c = document.createElement('canvas'); c.width = 144; c.height = 192; drawThumb(c, p); b.append(c);
+    const n = document.createElement('span'); n.textContent = i + 1; b.append(n);
+    b.onclick = () => { S.active = i; renderStrip(); showPage(); };
+    el.append(b);
+  });
+  if (S.pages.length < MAX_PAGES) {
+    const a = document.createElement('button'); a.type = 'button'; a.className = 'addthumb'; a.textContent = '+ 쪽 추가';
+    a.onclick = () => $('#file-pick').click(); el.append(a);
+  }
+}
+function refreshThumb() { const c = $$('#strip .thumb canvas')[S.active]; if (c) drawThumb(c, cur()); }
+function showPage() { syncPanel(); draw(); }
+const redraw = raf(() => { draw(); refreshThumb(); syncPanel(); });
+// 사진 모양이 바뀌면 지우개 자국 위치가 어긋나므로 지워요.
+function changeGeo(fn) {
+  const p = cur(); if (!p) return;
+  const had = p.strokes.length; fn(p); if (had) { p.strokes = []; toast('사진이 바뀌어서 지우개 자국을 비웠어요.'); }
+  redraw();
+}
+function bindStage() {
+  const cv = $('#cv'); let st = null;
+  const toImg = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / S.scale, y: (e.clientY - r.top) / S.scale }; };
+  cv.style.cursor = 'crosshair';
+  cv.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; const p = cur(); if (!p) return; cv.setPointerCapture(e.pointerId);
+    const pt = toImg(e); st = { size: S.brush / S.scale, pts: [pt.x, pt.y] }; p.strokes.push(st); S.hover = pt; draw(); e.preventDefault();
+  });
+  const move = raf(() => draw());
+  cv.addEventListener('pointermove', e => { const pt = toImg(e); S.hover = pt; if (st) st.pts.push(pt.x, pt.y); move(); });
+  const end = () => { if (!st) return; st = null; refreshThumb(); syncPanel(); draw(); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('pointerleave', () => { S.hover = null; if (!st) draw(); });
+}
+
+/* ------------------------------------------------------------------ step 3: info & finish */
+const META = ['school', 'grade', 'subject', 'year', 'term', 'note'];
+function loadMeta() {
+  let m = {}; try { m = JSON.parse(localStorage.getItem('cs_meta') || '{}'); } catch (e) {}
+  META.forEach(k => { if (k !== 'note' && m[k]) $('#m-' + k).value = m[k]; });
+  if (!$('#m-year').value) $('#m-year').value = String(new Date().getFullYear());
+}
+function readMeta() { const m = {}; META.forEach(k => { m[k] = $('#m-' + k).value.trim(); }); return m; }
+function enterStep3() {
+  const box = $('#preview'); box.innerHTML = '';
+  S.pages.forEach(p => { renderFinal(p); const im = new Image(); im.alt = ''; im.src = p.final.toDataURL('image/jpeg', 0.6); box.append(im); });
+  loadMeta(); setStep('3');
+}
+const b64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+async function buildResults() {
+  const out = [];
+  for (const p of S.pages) {
+    renderFinal(p);
+    const clean = await blobOf(p.final, 'image/jpeg', 0.92);
+    const orig = await blobOf(p.src, 'image/jpeg', 0.88);
+    out.push({ clean, orig, url: URL.createObjectURL(clean) });
+  }
+  return out;
+}
+async function upload() {
+  const c = srvConf();
+  const pages = [];
+  for (const r of S.results) pages.push({ orig: await b64(r.orig), clean: await b64(r.clean) });
+  const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 180000);
+  let res;
+  try {
+    res = await fetch(c.url + '/exam', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Device': srvDevId() }, body: JSON.stringify({ meta: S.meta, pages }), signal: ac.signal });
+  } catch (e) { throw Object.assign(new Error('net'), { kind: 'net' }); }
+  finally { clearTimeout(tm); }
+  let j = null; try { j = await res.json(); } catch (e) {}
+  if (!res.ok) throw Object.assign(new Error('http'), { kind: 'http', status: res.status, body: j });
+  return j;
+}
+function upErrMsg(e) {
+  if (e.kind === 'net') return '서버에 연결하지 못했어요.';
+  if (e.status === 429) { const m = Math.max(1, Math.round(((e.body || {}).retry || 3600) / 60)); return '오늘 올릴 수 있는 횟수를 다 썼어요. 약 ' + m + '분 뒤에 다시 저장할 수 있어요.'; }
+  if (e.status === 404) return '서버가 아직 이 기능을 모르는 버전이에요.';
+  return (e.body && e.body.error) || '서버에 저장하지 못했어요.';
+}
+async function tryUpload() {
+  const btn = $('#btn-retry'); btn.disabled = true; toast('서버에 저장하는 중…', 0);
+  try {
+    await upload(); S.uploaded = true; hideToast();
+    $('#done-mark').className = 'done-mark'; $('#done-mark').innerHTML = ico('check');
+    $('#done-sub').textContent = S.results.length + '쪽을 서버에 저장했어요. 이제 인쇄하거나 PDF로 저장하세요.';
+    btn.hidden = true;
+  } catch (e) {
+    hideToast();
+    $('#done-mark').className = 'done-mark warn'; $('#done-mark').innerHTML = ico('alert');
+    $('#done-sub').textContent = upErrMsg(e) + ' 인쇄는 지금 바로 할 수 있어요.';
+    btn.hidden = false;
+  } finally { btn.disabled = false; }
+}
+async function finish() {
+  const btn = $('#btn-finish'); btn.disabled = true; toast('깨끗한 시험지를 만드는 중…', 0);
+  try {
+    S.meta = readMeta();
+    try { localStorage.setItem('cs_meta', JSON.stringify(S.meta)); } catch (e) {}
+    if (S.results) S.results.forEach(r => URL.revokeObjectURL(r.url));
+    S.results = await buildResults();
+    const dp = $('#done-pages'); dp.innerHTML = '';
+    const pa = $('#print-area'); pa.innerHTML = '';
+    S.results.forEach(r => {
+      const im = new Image(); im.alt = ''; im.src = r.url; dp.append(im);
+      const d = document.createElement('div'); d.className = 'pp'; const pi = new Image(); pi.alt = ''; pi.src = r.url; d.append(pi); pa.append(d);
+    });
+    $('#done-title').textContent = '깨끗한 시험지 ' + S.results.length + '쪽을 만들었어요';
+    $('#done-sub').textContent = '';
+    setStep('done');
+    await tryUpload();
+  } catch (e) { toast('만들지 못했어요. 다시 시도해 주세요.'); }
+  finally { btn.disabled = false; }
+}
+function reset() {
+  if (S.results) S.results.forEach(r => URL.revokeObjectURL(r.url));
+  S.pages = []; S.active = 0; S.results = null; S.uploaded = false;
+  $('#print-area').innerHTML = ''; $('#m-note').value = '';
+  setStep('drop');
+}
+
+/* ------------------------------------------------------------------ server (단어 시험지·오답노트와 같은 라즈베리파이 서버) */
+// 서버 주소와 기기 번호는 단어 시험지 앱이 저장한 값(wtm_srv, wtm_dev)을 같이 써요. 올리기에는 비밀번호가 필요 없어요.
+const SRV_DEFAULT = 'https://pi.tail7271de.ts.net';
+function srvConf() {
+  let s = {}; try { s = JSON.parse(localStorage.getItem('wtm_srv') || '{}'); } catch (e) {}
+  return { url: String(s.url || SRV_DEFAULT).trim().replace(/\/+$/, ''), tok: s.tok || '' };
+}
+function srvDevId() {
+  let d = ''; try { d = localStorage.getItem('wtm_dev') || ''; } catch (e) {}
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(d)) {
+    const a = 'abcdefghijklmnopqrstuvwxyz0123456789', u = crypto.getRandomValues(new Uint8Array(22));
+    d = Array.from(u, x => a[x % 36]).join(''); try { localStorage.setItem('wtm_dev', d); } catch (e) {}
+  }
+  return d;
+}
+
+/* ------------------------------------------------------------------ admin */
+// 열람은 서버가 비밀번호를 확인해요. 이 페이지는 공개라서 비밀번호를 코드에 넣지 않고, 탭을 닫으면 잊어요.
+const A = { pw: '', urls: [] };
+try { A.pw = sessionStorage.getItem('cs_admin') || ''; } catch (e) {}
+function showView(v) {
+  $('#view-make').hidden = v !== 'make'; $('#view-admin').hidden = v !== 'admin';
+  if (v === 'admin') { if (A.pw) loadAdmin(); else showLogin(''); }
+  window.scrollTo({ top: 0 });
+}
+function showLogin(msg) {
+  $('#login').hidden = false; $('#admin-list').hidden = true; $('#btn-reload').hidden = true; $('#btn-logout').hidden = true;
+  $('#login-msg').textContent = msg; $('#admin-pw').value = '';
+  if (!msg) { const t = srvConf().tok; if (t) $('#admin-pw').value = t; }
+}
+async function adminFetch(path) {
+  const r = await fetch(srvConf().url + path, { headers: { 'X-Token': A.pw }, cache: 'no-store' });
+  if (r.status === 401) throw Object.assign(new Error('auth'), { kind: 'auth' });
+  if (!r.ok) throw Object.assign(new Error('http'), { kind: 'http', status: r.status });
+  return r;
+}
+function clearUrls() { A.urls.forEach(u => URL.revokeObjectURL(u)); A.urls = []; }
+async function loadAdmin() {
+  const box = $('#admin-list');
+  $('#login').hidden = true; box.hidden = false; $('#btn-reload').hidden = false; $('#btn-logout').hidden = false;
+  box.innerHTML = '<p class="empty">불러오는 중…</p>';
+  let items;
+  try { items = (await (await adminFetch('/exam/list')).json()).items || []; }
+  catch (e) {
+    if (e.kind === 'auth') { A.pw = ''; try { sessionStorage.removeItem('cs_admin'); } catch (x) {} showLogin('비밀번호가 맞지 않아요.'); return; }
+    box.innerHTML = '<p class="empty">' + (e.status === 404 ? '서버가 아직 이 기능을 모르는 버전이에요.' : '서버에 연결하지 못했어요.') + '</p>'; return;
+  }
+  clearUrls();
+  if (!items.length) { box.innerHTML = '<p class="empty">아직 올라온 시험지가 없어요.</p>'; return; }
+  box.innerHTML = '<div class="entries">' + items.map((it, i) => {
+    const title = [it.school, it.grade, it.subject].filter(Boolean).join(' · ') || '정보 없음';
+    const sub = [it.year, it.term, it.note].filter(Boolean).join(' · ');
+    return '<article class="entry" data-i="' + i + '"><div class="entry-head"><div><b>' + esc(title) + '</b>' + (sub ? ' <span class="mini">' + esc(sub) + '</span>' : '') + '</div>' +
+      '<span class="mini">' + esc(it.at || '') + ' · ' + (it.pages || 0) + '쪽 <button class="btn small danger" type="button" data-del="' + i + '">지우기</button></span></div>' +
+      '<div class="entry-imgs">' + (it.files || []).map(f => '<a href="#" data-i="' + i + '" data-f="' + esc(f) + '" target="_blank" rel="noopener"><img alt=""><span>' + (/orig/.test(f) ? '원본 ' : '깨끗한 ') + esc(f.split('-')[0].slice(1)) + '쪽</span></a>').join('') + '</div></article>';
+  }).join('') + '</div>';
+  A.items = items;
+  for (const a of $$('.entry-imgs a', box)) {
+    const it = items[+a.dataset.i];
+    try {
+      const u = URL.createObjectURL(await (await adminFetch('/exam/file?id=' + encodeURIComponent(it.id) + '&name=' + encodeURIComponent(a.dataset.f))).blob());
+      A.urls.push(u); $('img', a).src = u; a.href = u;
+    } catch (e) { $('span', a).textContent += ' (못 불러옴)'; }
+  }
+}
+async function adminDelete(i) {
+  const it = A.items[i]; if (!it) return;
+  if (!confirm('이 시험지를 서버에서 지울까요? 되돌릴 수 없어요.')) return;
+  try {
+    const r = await fetch(srvConf().url + '/exam/delete', { method: 'POST', headers: { 'X-Token': A.pw, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: it.id }) });
+    if (!r.ok) throw new Error(String(r.status));
+    toast('지웠어요.'); loadAdmin();
+  } catch (e) { toast('지우지 못했어요.'); }
+}
+
+/* ------------------------------------------------------------------ wiring */
+function bind() {
+  $('#btn-cam').onclick = () => $('#file-cam').click();
+  $('#btn-pick').onclick = () => $('#file-pick').click();
+  for (const id of ['#file-cam', '#file-pick']) $(id).onchange = e => { const f = e.target.files; if (f && f.length) addFiles(f); e.target.value = ''; };
+  const drop = $('#st-drop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+  const slow = debounce(fn => fn(), 120);
+  $('#angle').oninput = e => { const v = +e.target.value; $('#angle-out').textContent = (v > 0 ? '+' : '') + v.toFixed(1) + '°'; slow(() => changeGeo(p => { p.angle = v; })); };
+  $('#btn-auto-angle').onclick = () => changeGeo(p => { p.angle = 0; p.geoKey = ''; ensureCorrected(p); const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; });
+  $('#btn-rot-l').onclick = () => changeGeo(p => { p.quarter = (p.quarter + 3) % 4; p.angle = 0; });
+  $('#btn-rot-r').onclick = () => changeGeo(p => { p.quarter = (p.quarter + 1) % 4; p.angle = 0; });
+  $('#auto-fix').onchange = e => changeGeo(p => { p.autoFix = e.target.checked; });
+  $('#bright').oninput = e => { $('#bright-out').textContent = e.target.value; const v = +e.target.value; slow(() => changeGeo(p => { p.bright = v; })); };
+  $('#fx-color').onchange = e => { cur().fx.color = e.target.checked; redraw(); };
+  $('#fx-color-s').oninput = e => { const v = +e.target.value; slow(() => { cur().fx.colorS = v; redraw(); }); };
+  $('#fx-pencil').onchange = e => { cur().fx.pencil = e.target.checked; redraw(); };
+  $('#fx-pencil-s').oninput = e => { const v = +e.target.value; slow(() => { cur().fx.pencilS = v; redraw(); }); };
+  $('#brush').oninput = e => { S.brush = +e.target.value; $('#brush-out').textContent = e.target.value; };
+  $('#btn-undo').onclick = () => { const p = cur(); if (p && p.strokes.length) { p.strokes.pop(); redraw(); } };
+  $('#btn-del-page').onclick = () => {
+    S.pages.splice(S.active, 1);
+    if (!S.pages.length) { setStep('drop'); return; }
+    S.active = Math.min(S.active, S.pages.length - 1); renderStrip(); showPage();
+  };
+  $('#btn-restart').onclick = () => { if (confirm('지금까지 정리한 내용을 버리고 처음으로 갈까요?')) reset(); };
+  $('#btn-to3').onclick = enterStep3;
+  $('#btn-back2').onclick = () => setStep('2');
+  $('#btn-finish').onclick = finish;
+  $('#btn-print').onclick = () => window.print();
+  $('#btn-retry').onclick = tryUpload;
+  $('#btn-new').onclick = reset;
+  bindStage();
+  window.addEventListener('resize', raf(draw));
+
+  $('#btn-admin').onclick = () => showView('admin');
+  $('#btn-admin-back').onclick = () => { clearUrls(); showView('make'); };
+  $('#btn-reload').onclick = loadAdmin;
+  $('#btn-logout').onclick = () => { A.pw = ''; try { sessionStorage.removeItem('cs_admin'); } catch (e) {} clearUrls(); showLogin(''); };
+  $('#login').onsubmit = e => {
+    e.preventDefault(); A.pw = $('#admin-pw').value.trim(); if (!A.pw) return;
+    try { sessionStorage.setItem('cs_admin', A.pw); } catch (x) {}
+    loadAdmin();
+  };
+  $('#admin-list').addEventListener('click', e => { const d = e.target.closest('[data-del]'); if (d) adminDelete(+d.dataset.del); });
+}
+bind();
+setStep('drop');
+})();
+</script>
+</body>
+</html>
