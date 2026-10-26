@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>오답노트 만들기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: a workbench in the shape of a notebook margin. Left, the paper you are working on; right, a narrow control rail.
+   The accent is the red grading pen, used only for marks the student has made (picked problems, delete). */
+:root{
+  --bg:#eef1f6; --grid:#e0e5ee; --surface:#ffffff; --surface-2:#f5f7fb;
+  --ink:#14213d; --muted:#586782; --line:#d3dae6; --line-strong:#b4bfd1;
+  --accent:#c93a2f; --accent-soft:rgba(201,58,47,.17); --accent-fill:rgba(201,58,47,.13);
+  --info:#2a5bd7; --info-soft:rgba(42,91,215,.09);
+  --btn:#14213d; --btn-fg:#ffffff; --stage:#dde3ee; --ok:#1f7a4d; --focus:#2a5bd7;
+  --font-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  --font-display:"Hahmlet","Noto Serif KR","Batang",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1524; --grid:#141d31; --surface:#162036; --surface-2:#1b2740;
+    --ink:#e7ecf6; --muted:#9aa8c2; --line:#2a3957; --line-strong:#3d4f74;
+    --accent:#ff6e5f; --accent-soft:rgba(255,110,95,.24); --accent-fill:rgba(255,110,95,.16);
+    --info:#7fa6ff; --info-soft:rgba(127,166,255,.14);
+    --btn:#e7ecf6; --btn-fg:#0e1524; --stage:#0a101c; --ok:#5fd29a; --focus:#9bb8ff; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1524; --grid:#141d31; --surface:#162036; --surface-2:#1b2740;
+  --ink:#e7ecf6; --muted:#9aa8c2; --line:#2a3957; --line-strong:#3d4f74;
+  --accent:#ff6e5f; --accent-soft:rgba(255,110,95,.24); --accent-fill:rgba(255,110,95,.16);
+  --info:#7fa6ff; --info-soft:rgba(127,166,255,.14);
+  --btn:#e7ecf6; --btn-fg:#0e1524; --stage:#0a101c; --ok:#5fd29a; --focus:#9bb8ff; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+html{background:var(--bg)}
+body{
+  background-color:var(--bg);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:26px 26px;
+  color:var(--ink); font:15px/1.55 var(--font-body);
+  padding-block:22px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  min-height:100vh;
+}
+.shell{max-width:1120px;margin:0 auto}
+h1,h2,h3,p{margin:0}
+.muted{color:var(--muted)}
+.mini{font-size:12.5px;color:var(--muted);line-height:1.5}
+.ico{display:inline-flex;width:18px;height:18px;flex:none}
+.ico svg{width:100%;height:100%}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;justify-content:space-between}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;font-weight:400}
+.brand-name{font:700 28px/1.15 var(--font-display);background:linear-gradient(transparent 58%,var(--accent-soft) 58%,var(--accent-soft) 90%,transparent 90%);padding:0 5px;margin-left:-5px}
+.brand-sub{font-size:13px;color:var(--muted)}
+.tabs{display:flex;gap:3px;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:8px;max-width:100%}
+.tab{border:0;background:transparent;color:var(--muted);padding:8px 14px;border-radius:6px;font:500 14px var(--font-body);cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--btn);color:var(--btn-fg)}
+.tab .count{font-size:11.5px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:#fff;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
+.tab .count[hidden]{display:none}
+
+/* steps */
+.steps{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:22px 0 16px}
+.steps li{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:13px;font-weight:500}
+.steps i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;background:var(--surface-2);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.steps i .ico{width:14px;height:14px}
+.steps li.on{color:var(--ink);border-color:var(--ink)}
+.steps li.on i{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.steps li.done{color:var(--ink)}
+.steps li.done i{background:var(--ok);color:#fff;border-color:var(--ok)}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:500 14px var(--font-body);cursor:pointer;text-align:center}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--btn);color:var(--btn-fg);border-color:var(--btn)}
+.btn.small{min-height:32px;padding:0 10px;font-size:13px;gap:6px}
+.btn.small .ico{width:16px;height:16px}
+.btn.danger{color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.tab:focus-visible,.seg button:focus-visible,input:focus-visible,.thumb:focus-visible,.icon-btn:focus-visible,.thumbbtn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.btn-row.center{justify-content:center}
+input[type=text]{height:40px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);padding:0 10px;font:inherit;width:100%}
+input[type=range]{width:100%;accent-color:var(--ink);margin:2px 0}
+.check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;cursor:pointer}
+.check input{width:17px;height:17px;accent-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;max-width:100%}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 14px;font:500 13px var(--font-body);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--btn);color:var(--btn-fg)}
+hr{border:0;border-top:1px solid var(--line);margin:2px 0}
+
+/* work area */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.stage{background:var(--stage);border:1px solid var(--line);border-radius:6px;display:grid;place-items:center;padding:12px;min-height:260px;overflow:hidden}
+.stage canvas{display:block;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.28);max-width:100%}
+.stage canvas.draw{touch-action:none}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel-head h2{font:600 17px/1.3 var(--font-display)}
+.field{display:grid;gap:8px;min-width:0}
+.field label,.field .lab{font-weight:500;font-size:14px}
+.field-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.val{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.hint{font-size:13px;color:var(--muted);line-height:1.6}
+.panel-foot{display:flex;gap:8px;margin-top:4px}
+.panel-foot .primary{flex:1}
+.pickinfo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px}
+.pickinfo b{font-size:20px;color:var(--accent);font-variant-numeric:tabular-nums;margin-right:2px}
+
+/* drop */
+.drop{display:grid;justify-items:center;gap:14px;text-align:center;padding:46px 20px;background:var(--surface);border:2px dashed var(--line-strong);border-radius:8px}
+.drop.over{border-color:var(--info);background:var(--info-soft)}
+.drop h2{font:700 22px/1.3 var(--font-display)}
+.drop p{max-width:46ch;color:var(--muted)}
+.drop-ico{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+.drop-ico .ico{width:28px;height:28px}
+
+/* strip */
+.strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:6px}
+.thumb{position:relative;flex:0 0 auto;width:92px;height:70px;padding:0;border:1px solid var(--line-strong);border-radius:4px;background:#fff;cursor:pointer;overflow:hidden}
+.thumb canvas{width:100%;height:100%;display:block;object-fit:contain}
+.thumb span{position:absolute;left:4px;top:4px;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;font-size:11.5px;display:grid;place-items:center;font-variant-numeric:tabular-nums;padding:0 5px}
+.thumb.on{outline:2px solid var(--ink);outline-offset:1px}
+
+/* done */
+.done{display:grid;justify-items:center;gap:12px;text-align:center;padding:48px 20px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.done h2{font:700 22px/1.3 var(--font-display)}
+.done-mark{width:52px;height:52px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center}
+.done-mark .ico{width:26px;height:26px}
+
+/* shelf */
+.bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin:22px 0 14px}
+.h2{font:700 22px/1.3 var(--font-display)}
+.note{padding:10px 12px;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;font-size:13px;margin-bottom:12px}
+.folder{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:14px}
+.folder-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.folder-head .ico{color:var(--muted)}
+.folder-head h3{font:600 16px/1.3 var(--font-display);flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.folder-head .n{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;padding:14px}
+.card{border:1px solid var(--line);border-radius:4px;background:var(--surface);min-width:0;display:flex;flex-direction:column}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.thumbbtn{position:relative;display:grid;place-items:center;height:150px;padding:6px;border:0;border-bottom:1px solid var(--line);background:#fff;cursor:pointer}
+.thumbbtn img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.tick{position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-strong);background:rgba(255,255,255,.9);color:transparent;display:grid;place-items:center}
+.tick .ico{width:13px;height:13px}
+.card.sel .tick{background:var(--accent);border-color:var(--accent);color:#fff}
+.card-foot{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 10px;min-height:42px}
+.card-foot .txt{flex:1;min-width:0;display:grid}
+.clabel{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cexam{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{border:1px solid transparent;background:transparent;color:var(--muted);min-width:30px;height:30px;border-radius:4px;display:inline-grid;place-items:center;cursor:pointer;font:500 12px var(--font-body);padding:0 6px}
+.icon-btn:hover{color:var(--ink);border-color:var(--line)}
+.icon-btn .ico{width:16px;height:16px}
+.icon-btn.danger.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.emptybox{display:grid;justify-items:center;gap:12px;text-align:center;padding:54px 20px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:8px;margin-top:20px}
+.emptybox p{max-width:44ch;color:var(--muted)}
+.selbar{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;margin-top:14px;z-index:5;box-shadow:0 8px 24px rgba(10,20,40,.16)}
+.selbar b{color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* pdf */
+.pdfgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;margin-top:22px}
+.preview{min-width:0;display:grid;gap:8px}
+.pages{display:flex;gap:16px;overflow-x:auto;padding:16px;background:var(--stage);border:1px solid var(--line);border-radius:6px;min-height:240px}
+.page-wrap{flex:0 0 min(78%,360px);display:grid;gap:6px;align-content:start}
+.page-wrap canvas{width:100%;height:auto;display:block;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.3)}
+.page-wrap span{font-size:12px;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+
+/* overlays */
+.toast{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(16px);background:var(--btn);color:var(--btn-fg);padding:10px 16px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:calc(100vw - 32px);z-index:40;text-align:center}
+.toast.show{opacity:1;transform:none}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(8,12,22,.82);display:grid;place-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.lb img{max-width:100%;max-height:calc(100vh - 110px);background:#fff;border-radius:4px;display:block}
+.lb button{margin-top:12px}
+.lb-in{display:grid;justify-items:center;max-width:100%}
+
+@media (max-width:860px){
+  .work,.pdfgrid{grid-template-columns:minmax(0,1fr)}
+  .brand-name{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <h1 class="brand"><span class="brand-name">오답노트</span><span class="brand-sub">시험지 사진으로 오답노트 만들기</span></h1>
+    <nav class="tabs" role="tablist" aria-label="화면 선택">
+      <button class="tab" role="tab" data-tab="make" aria-selected="true">만들기</button>
+      <button class="tab" role="tab" data-tab="shelf" aria-selected="false">보관함<span class="count" id="shelf-count" hidden>0</span></button>
+      <button class="tab" role="tab" data-tab="pdf" aria-selected="false">PDF 출력</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===================== 만들기 ===================== -->
+    <section id="tab-make">
+      <ol class="steps" id="steps" aria-label="진행 단계">
+        <li data-s="1"><i>1</i>사진 보정</li>
+        <li data-s="2"><i>2</i>문제 고르기</li>
+        <li data-s="3"><i>3</i>필기 지우고 저장</li>
+      </ol>
+
+      <div id="st-drop" class="drop">
+        <div class="drop-ico"><span class="ico" data-ico="image"></span></div>
+        <h2>시험지 사진을 올려 주세요</h2>
+        <p>틀린 문제가 있는 시험지를 찍거나 사진 파일을 끌어다 놓으세요. 여러 장을 한 번에 올려도 돼요.</p>
+        <div class="btn-row center">
+          <button class="btn primary" id="btn-cam" type="button"><span class="ico" data-ico="camera"></span>사진 찍기</button>
+          <button class="btn" id="btn-pick" type="button"><span class="ico" data-ico="image"></span>파일 선택</button>
+          <button class="btn" id="btn-sample" type="button">예시 사진으로 체험</button>
+        </div>
+        <input type="file" id="file-cam" accept="image/*" capture="environment" hidden>
+        <input type="file" id="file-pick" accept="image/*" multiple hidden>
+        <p class="mini">사진은 이 브라우저 안에서만 처리되고, 외부로 전송되지 않아요.</p>
+      </div>
+
+      <div id="st1" class="work" hidden>
+        <div class="stage" id="stage1"><canvas id="cv1" aria-label="보정 미리보기"></canvas></div>
+        <aside class="panel">
+          <div class="panel-head"><h2>사진 보정</h2><span class="mini" id="queue-note"></span></div>
+          <div class="field">
+            <div class="field-row"><label for="angle">기울기</label><output id="angle-out" class="val">0.0°</output></div>
+            <input type="range" id="angle" min="-15" max="15" step="0.1" value="0">
+            <div class="btn-row">
+              <button class="btn small" id="btn-auto-angle" type="button"><span class="ico" data-ico="target"></span>자동 맞춤</button>
+              <button class="btn small" id="btn-rot-l" type="button" aria-label="왼쪽으로 90도 돌리기"><span class="ico" data-ico="rotl"></span>90°</button>
+              <button class="btn small" id="btn-rot-r" type="button" aria-label="오른쪽으로 90도 돌리기"><span class="ico" data-ico="rotr"></span>90°</button>
+            </div>
+            <p class="mini">파란 안내선과 글줄이 나란해지도록 맞춰요.</p>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="auto-fix" checked>밝기·그림자 보정</label>
+            <div class="field-row"><label for="bright">밝기</label><output id="bright-out" class="val">0</output></div>
+            <input type="range" id="bright" min="-50" max="50" step="1" value="0">
+          </div>
+          <div class="panel-foot">
+            <button class="btn" id="btn-other" type="button">다른 사진</button>
+            <button class="btn primary" id="btn-to2" type="button">문제 고르기 →</button>
+          </div>
+        </aside>
+      </div>
+
+      <div id="st2" class="work" hidden>
+        <div class="stage" id="stage2"><canvas id="cv2" class="draw" aria-label="문제 선택 화면"></canvas></div>
+        <aside class="panel">
+          <div class="panel-head"><h2>틀린 문제 고르기</h2></div>
+          <p class="hint">파란 점선 칸은 자동으로 나눈 문제예요. 틀린 문제를 눌러 담으세요. 빈 곳을 끌면 직접 영역을 만들 수 있고, 담은 칸은 끌어서 옮기거나 모서리를 끌어 크기를 맞춰요. 한 번 더 누르면 해제돼요.</p>
+          <div class="field">
+            <div class="field-row"><label for="sens">나누는 간격</label><output id="sens-out" class="val">보통</output></div>
+            <input type="range" id="sens" min="8" max="40" step="1" value="22">
+            <button class="btn small" id="btn-resuggest" type="button">다시 나누기</button>
+          </div>
+          <div class="pickinfo"><span><b id="pick-count">0</b>개 담음</span><button class="btn small" id="btn-unpick-all" type="button">모두 해제</button></div>
+          <div class="panel-foot">
+            <button class="btn" id="btn-back1" type="button">← 보정</button>
+            <button class="btn primary" id="btn-to3" type="button" disabled>필기 지우기 →</button>
+          </div>
+        </aside>
+      </div>
+
+      <div id="st3" hidden>
+        <div class="strip" id="strip" aria-label="고른 문제 목록"></div>
+        <div class="work">
+          <div class="stage" id="stage3"><canvas id="cv3" class="draw" aria-label="필기 지우기 화면"></canvas></div>
+          <aside class="panel">
+            <div class="panel-head"><h2>필기 지우기</h2><span class="mini" id="p-index"></span></div>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="fx-color" checked>색깔 필기 자동 지우기</label>
+              <input type="range" id="fx-color-s" min="0" max="100" value="50" aria-label="색깔 필기 지우기 강도">
+              <p class="mini">파란·빨간 펜, 형광펜 자국을 지워요. 강도를 올리면 옅은 색까지 지워요.</p>
+            </div>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="fx-pencil">연한 연필 자국 지우기</label>
+              <input type="range" id="fx-pencil-s" min="0" max="100" value="50" aria-label="연필 자국 지우기 강도">
+              <p class="mini">인쇄 글씨보다 연한 자국만 골라 지워요.</p>
+            </div>
+            <div class="field">
+              <div class="field-row"><label for="brush">지우개 크기</label><output id="brush-out" class="val">28</output></div>
+              <input type="range" id="brush" min="8" max="80" value="28">
+              <p class="mini">검은 펜 필기는 문제 위를 문지르면 지워져요.</p>
+              <div class="btn-row">
+                <button class="btn small" id="btn-undo" type="button"><span class="ico" data-ico="undo"></span>되돌리기</button>
+                <button class="btn small" id="btn-clear-strokes" type="button">지우개 취소</button>
+              </div>
+            </div>
+            <div class="field"><label for="p-label">문제 번호 (선택)</label><input type="text" id="p-label" maxlength="24" placeholder="예: 12번"></div>
+            <hr>
+            <div class="field"><label for="exam">시험 이름</label><input type="text" id="exam" maxlength="40" list="exam-list" placeholder="예: 1학기 중간고사 수학" autocomplete="off"><datalist id="exam-list"></datalist></div>
+            <div class="panel-foot">
+              <button class="btn" id="btn-back2" type="button" aria-label="문제 고르기로 돌아가기">←</button>
+              <button class="btn primary" id="btn-save" type="button"><span class="ico" data-ico="folder"></span>보관함에 저장</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div id="st-done" class="done" hidden>
+        <div class="done-mark"><span class="ico" data-ico="check"></span></div>
+        <h2 id="done-title">보관함에 담았어요</h2>
+        <p class="muted" id="done-sub"></p>
+        <div class="btn-row center">
+          <button class="btn primary" id="btn-next-photo" type="button" hidden>다음 사진</button>
+          <button class="btn" id="btn-go-shelf" type="button">보관함 보기</button>
+          <button class="btn" id="btn-more" type="button">사진 더 올리기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 보관함 ===================== -->
+    <section id="tab-shelf" hidden>
+      <div class="bar">
+        <div><h2 class="h2">보관함</h2><p class="mini" id="shelf-sub"></p></div>
+        <div class="seg" role="group" aria-label="보기 방식">
+          <button type="button" data-view="exam" aria-pressed="true">시험별</button>
+          <button type="button" data-view="all" aria-pressed="false">전체</button>
+        </div>
+      </div>
+      <div id="shelf-warn" class="note" hidden>이 화면에서는 브라우저 저장 공간을 쓸 수 없어요. 페이지를 닫으면 보관함이 비워지니, 필요한 문제는 먼저 PDF로 저장해 주세요.</div>
+      <div id="shelf-body"></div>
+      <div class="selbar" id="selbar" hidden>
+        <span><b id="sel-n">0</b>문제 선택됨</span>
+        <span class="btn-row">
+          <button class="btn small" id="btn-clear-sel" type="button">선택 해제</button>
+          <button class="btn primary small" id="btn-go-pdf" type="button"><span class="ico" data-ico="download"></span>PDF 만들기</button>
+        </span>
+      </div>
+    </section>
+
+    <!-- ===================== PDF ===================== -->
+    <section id="tab-pdf" hidden>
+      <div id="pdf-empty" class="emptybox" hidden>
+        <h2 class="h2">출력할 문제를 먼저 골라 주세요</h2>
+        <p>보관함에서 문제를 누르면 선택돼요. 시험 이름 옆의 전체 선택으로 한 시험을 통째로 담을 수도 있어요.</p>
+        <button class="btn primary" id="btn-pdf-shelf" type="button">보관함으로</button>
+      </div>
+      <div id="pdf-main" class="pdfgrid" hidden>
+        <aside class="panel">
+          <div class="panel-head"><h2>PDF 설정</h2></div>
+          <div class="field"><label for="pdf-title">제목</label><input type="text" id="pdf-title" value="오답노트" maxlength="40"></div>
+          <div class="field"><span class="lab">페이지당 문제 수</span>
+            <div class="seg" id="seg-per" role="group" aria-label="페이지당 문제 수">
+              <button type="button" data-v="1" aria-pressed="false">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="true">3</button><button type="button" data-v="4" aria-pressed="false">4</button>
+            </div></div>
+          <div class="field"><span class="lab">문제 영역 너비</span>
+            <div class="seg" id="seg-ratio" role="group" aria-label="문제 영역 너비">
+              <button type="button" data-v="0.4" aria-pressed="false">40%</button><button type="button" data-v="0.5" aria-pressed="true">50%</button><button type="button" data-v="0.6" aria-pressed="false">60%</button>
+            </div></div>
+          <div class="field"><span class="lab">풀이 칸 바탕</span>
+            <div class="seg" id="seg-pat" role="group" aria-label="풀이 칸 바탕">
+              <button type="button" data-v="none" aria-pressed="true">빈칸</button><button type="button" data-v="lines" aria-pressed="false">줄</button><button type="button" data-v="grid" aria-pressed="false">모눈</button>
+            </div></div>
+          <p class="mini">문제는 왼쪽, 다시 풀 공간은 오른쪽에 놓여요.</p>
+          <p class="mini" id="pdf-sum"></p>
+          <button class="btn primary" id="btn-pdf" type="button"><span class="ico" data-ico="download"></span>PDF 저장</button>
+        </aside>
+        <div class="preview">
+          <div class="pages" id="pages" aria-live="polite"></div>
+          <p class="mini" id="pdf-msg"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="lb" id="lb" hidden>
+  <div class="lb-in"><img id="lb-img" alt="확대한 문제"><button class="btn" id="lb-close" type="button">닫기</button></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const dprr = () => Math.min(2, window.devicePixelRatio || 1);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const MAX_SIDE = 2000;
+const blobOf = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const raf = fn => { let q = false; return (...a) => { if (q) return; q = true; requestAnimationFrame(() => { q = false; fn(...a); }); }; };
+
+const ICONS = {
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
+  rotl:'<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  rotr:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  target:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H8"/>',
+  download:'<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'
+};
+const svg = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>';
+const ico = n => '<span class="ico">' + svg(n) + '</span>';
+$$('[data-ico]').forEach(el => { el.innerHTML = svg(el.dataset.ico); });
+
+let toastT;
+function toast(msg, ms = 3200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); if (ms) toastT = setTimeout(() => t.classList.remove('show'), ms);
+}
+const hideToast = () => { clearTimeout(toastT); $('#toast').classList.remove('show'); };
+
+/* ------------------------------------------------------------------ storage */
+const Store = {
+  db: null, mem: [], persistent: false,
+  async init() {
+    try {
+      if (!window.indexedDB) throw new Error('no idb');
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('odap-note-v1', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('items', { keyPath: 'id' }); };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.onblocked = () => rej(new Error('blocked'));
+      });
+      this.persistent = true;
+    } catch (e) { this.db = null; this.persistent = false; }
+  },
+  os(mode) { return this.db.transaction('items', mode).objectStore('items'); },
+  async all() {
+    if (!this.db) return [...this.mem];
+    try { return await new Promise((res, rej) => { const r = this.os('readonly').getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); }); }
+    catch (e) { return [...this.mem]; }
+  },
+  async put(item) {
+    if (this.db) {
+      try { await new Promise((res, rej) => { const r = this.os('readwrite').put(item); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }); return; }
+      catch (e) { this.persistent = false; }
+    }
+    this.mem.push(item);
+  },
+  async del(id) {
+    this.mem = this.mem.filter(i => i.id !== id);
+    if (!this.db) return;
+    try { await new Promise((res, rej) => { const r = this.os('readwrite').delete(id); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }); } catch (e) {}
+  }
+};
+
+/* ------------------------------------------------------------------ state */
+let ITEMS = [];
+const urlCache = new Map(), bmpCache = new Map();
+const urlOf = it => { if (!urlCache.has(it.id)) urlCache.set(it.id, URL.createObjectURL(it.blob)); return urlCache.get(it.id); };
+const S = {
+  tab: 'make', stepName: 'drop',
+  queue: [], qi: 0,
+  src: null, bg: null, norm: null, qc: null, quarter: 0, angle: 0, autoFix: true, bright: 0,
+  corrected: null,
+  boxes: [], activeId: null, boxSeq: 0, pickSeq: 0, sens: 2.2, tmp: null, s2: 1,
+  problems: [], activeP: 0, s3: 1, fx: { color: true, colorS: 50, pencil: false, pencilS: 50 }, brush: 28, hover: null,
+  lastExam: '',
+  sel: new Set(), shelfView: 'exam', armed: null,
+  pdf: { per: 3, ratio: 0.5, pat: 'none', title: '오답노트' }
+};
+const cur = () => S.problems[S.activeP];
+
+/* ------------------------------------------------------------------ canvas fitting */
+function fitCanvas(cv, iw, ih, host, maxScale = 1) {
+  const cs = getComputedStyle(host);
+  const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const aw = Math.max(120, host.clientWidth - pad);
+  const ah = Math.max(220, Math.min(window.innerHeight * 0.78, 880));
+  const scale = Math.min(aw / iw, ah / ih, maxScale);
+  const cw = Math.max(1, Math.round(iw * scale)), ch = Math.max(1, Math.round(ih * scale));
+  const r = dprr();
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  const pw = Math.round(cw * r), ph = Math.round(ch * r);
+  if (cv.width !== pw) cv.width = pw;
+  if (cv.height !== ph) cv.height = ph;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  return { ctx, scale: cw / iw, cw, ch };
+}
+
+/* ------------------------------------------------------------------ tabs & steps */
+function showTab(name) {
+  S.tab = name;
+  ['make', 'shelf', 'pdf'].forEach(n => {
+    $('#tab-' + n).hidden = n !== name;
+    $('[data-tab="' + n + '"]').setAttribute('aria-selected', String(n === name));
+  });
+  if (name === 'shelf') renderShelf();
+  if (name === 'pdf') renderPdfTab();
+  if (name === 'make') relayout();
+  window.scrollTo({ top: 0 });
+}
+function setStep(name) {
+  S.stepName = name; hideToast();
+  ['drop', '1', '2', '3', 'done'].forEach(n => {
+    const el = n === 'drop' ? $('#st-drop') : n === 'done' ? $('#st-done') : $('#st' + n);
+    el.hidden = n !== name;
+  });
+  const order = { '1': 1, '2': 2, '3': 3 };
+  $$('#steps li').forEach(li => {
+    const s = +li.dataset.s; const c = order[name] || (name === 'done' ? 4 : 0);
+    li.className = s === c ? 'on' : (s < c ? 'done' : '');
+    const i = $('i', li); i.innerHTML = s < c ? ico('check') : String(s);
+    if (s === c) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+  relayout();
+}
+function relayout() {
+  if (S.tab !== 'make') return;
+  if (S.stepName === '1') drawStep1();
+  if (S.stepName === '2') drawStep2();
+  if (S.stepName === '3') drawStep3();
+}
+
+/* ------------------------------------------------------------------ loading photos */
+function loadImgEl(file) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); res(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('img')); };
+    im.src = u;
+  });
+}
+async function fileToCanvas(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) { bmp = await loadImgEl(file); }
+  const bw = bmp.naturalWidth || bmp.width, bh = bmp.naturalHeight || bmp.height;
+  const sc = Math.min(1, MAX_SIDE / Math.max(bw, bh));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bw * sc); cv.height = Math.round(bh * sc);
+  const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(bmp, 0, 0, cv.width, cv.height);
+  if (bmp.close) bmp.close();
+  return cv;
+}
+function shrinkCanvas(cv) {
+  const sc = Math.min(1, MAX_SIDE / Math.max(cv.width, cv.height));
+  if (sc >= 1) return cv;
+  const o = document.createElement('canvas'); o.width = Math.round(cv.width * sc); o.height = Math.round(cv.height * sc);
+  const x = o.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(cv, 0, 0, o.width, o.height); return o;
+}
+async function handleFiles(list) {
+  const files = [...list].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(f.name));
+  if (!files.length) { toast('이미지 파일만 올릴 수 있어요.'); return; }
+  S.queue = files; S.qi = 0; await openQueued();
+}
+async function openQueued() {
+  toast('사진을 불러오는 중…', 0);
+  try { startPhoto(await fileToCanvas(S.queue[S.qi])); hideToast(); }
+  catch (e) { toast('사진을 열 수 없어요. JPG나 PNG 파일로 다시 시도해 주세요.'); if (S.stepName === 'drop' || !S.src) setStep('drop'); }
+}
+
+/* ------------------------------------------------------------------ step 1: correction */
+function buildBgGrid(cv) {
+  const c = 32, w = cv.width, h = cv.height, gw = Math.ceil(w / c), gh = Math.ceil(h / c);
+  const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+  const g = new Float32Array(gw * gh * 3);
+  const h0 = new Uint16Array(256), h1 = new Uint16Array(256), h2 = new Uint16Array(256);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    h0.fill(0); h1.fill(0); h2.fill(0);
+    const x0 = gx * c, x1 = Math.min(w, x0 + c), y0 = gy * c, y1 = Math.min(h, y0 + c);
+    let n = 0;
+    for (let y = y0; y < y1; y++) { let i = (y * w + x0) * 4; for (let x = x0; x < x1; x++, i += 4) { h0[d[i]]++; h1[d[i + 1]]++; h2[d[i + 2]]++; n++; } }
+    const need = n * 0.15;
+    const q = hist => { let acc = 0, v = 255; for (; v > 0; v--) { acc += hist[v]; if (acc >= need) break; } return v; };
+    const o = (gy * gw + gx) * 3; g[o] = q(h0); g[o + 1] = q(h1); g[o + 2] = q(h2);
+  }
+  // 3x3 max (fills text-heavy cells from the paper around them), then 3x3 blur
+  const mx = new Float32Array(g.length), bl = new Float32Array(g.length);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) for (let k = 0; k < 3; k++) {
+    let m = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const yy = clamp(gy + dy, 0, gh - 1), xx = clamp(gx + dx, 0, gw - 1); const v = g[(yy * gw + xx) * 3 + k]; if (v > m) m = v;
+    }
+    mx[(gy * gw + gx) * 3 + k] = Math.max(m, 40);
+  }
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) for (let k = 0; k < 3; k++) {
+    let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const yy = clamp(gy + dy, 0, gh - 1), xx = clamp(gx + dx, 0, gw - 1); s += mx[(yy * gw + xx) * 3 + k]; n++;
+    }
+    bl[(gy * gw + gx) * 3 + k] = s / n;
+  }
+  return { grid: bl, gw, gh, c };
+}
+function applyNorm(src, bg, hi) {
+  const w = src.width, h = src.height;
+  const id = src.getContext('2d').getImageData(0, 0, w, h), d = id.data;
+  const { grid, gw, gh, c } = bg;
+  const cx0 = new Int32Array(w), cx1 = new Int32Array(w), ctf = new Float32Array(w);
+  for (let x = 0; x < w; x++) {
+    const f = (x + 0.5) / c - 0.5; let a = Math.floor(f); const t = f - a; let b = a + 1;
+    a = clamp(a, 0, gw - 1); b = clamp(b, 0, gw - 1); cx0[x] = a * 3; cx1[x] = b * 3; ctf[x] = t;
+  }
+  const lo = 12, kk = 255 / (hi - lo);
+  for (let y = 0; y < h; y++) {
+    const f = (y + 0.5) / c - 0.5; let a = Math.floor(f); const ty = f - a; let b = a + 1;
+    a = clamp(a, 0, gh - 1); b = clamp(b, 0, gh - 1);
+    const ra = a * gw * 3, rb = b * gw * 3;
+    for (let x = 0; x < w; x++) {
+      const t = ctf[x], u = 1 - t, v = 1 - ty, p = (y * w + x) * 4, i0 = cx0[x], i1 = cx1[x];
+      for (let k = 0; k < 3; k++) {
+        const bgv = (grid[ra + i0 + k] * u + grid[ra + i1 + k] * t) * v + (grid[rb + i0 + k] * u + grid[rb + i1 + k] * t) * ty;
+        let o = (d[p + k] / bgv * 255 - lo) * kk;
+        d[p + k] = o > 255 ? 255 : o < 0 ? 0 : o;
+      }
+    }
+  }
+  const out = document.createElement('canvas'); out.width = w; out.height = h;
+  out.getContext('2d').putImageData(id, 0, 0); return out;
+}
+function quarterCanvas(cv, q) {
+  q = ((q % 4) + 4) % 4; if (q === 0) return cv;
+  const r = document.createElement('canvas'); const sw = q % 2 === 1;
+  r.width = sw ? cv.height : cv.width; r.height = sw ? cv.width : cv.height;
+  const x = r.getContext('2d'); x.translate(r.width / 2, r.height / 2); x.rotate(q * Math.PI / 2); x.drawImage(cv, -cv.width / 2, -cv.height / 2); return r;
+}
+function renderFine(qc, deg) {
+  const c = document.createElement('canvas'); c.width = qc.width; c.height = qc.height;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.translate(c.width / 2, c.height / 2); x.rotate(deg * Math.PI / 180); x.imageSmoothingQuality = 'high';
+  x.drawImage(qc, -qc.width / 2, -qc.height / 2); return c;
+}
+function detectSkew(cv) {
+  const sc = Math.min(1, 700 / cv.width), w = Math.round(cv.width * sc), h = Math.round(cv.height * sc);
+  const t = document.createElement('canvas'); t.width = w; t.height = h; const tx = t.getContext('2d'); tx.drawImage(cv, 0, 0, w, h);
+  const d = tx.getImageData(0, 0, w, h).data; const pts = [];
+  const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
+  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) { const p = (y * w + x) * 4; const l = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8; if (l < 130) pts.push(x, y); }
+  if (pts.length < 800) return 0;
+  const N = pts.length / 2, stride = Math.max(1, Math.floor(N / 30000));
+  const score = deg => {
+    const r = deg * Math.PI / 180, s = Math.sin(r), c = Math.cos(r), off = Math.ceil(w * Math.abs(s)) + 2;
+    const bins = new Float64Array(h + off * 2 + 6);
+    for (let i = 0; i < N; i += stride) { const y = pts[i * 2] * s + pts[i * 2 + 1] * c; bins[Math.floor(y) + off]++; }
+    let sum = 0; for (let i = 0; i < bins.length; i++) sum += bins[i] * bins[i]; return sum;
+  };
+  let best = 0, bs = -1;
+  for (let a = -12; a <= 12.001; a += 0.5) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+  const c0 = best; for (let a = c0 - 0.5; a <= c0 + 0.5001; a += 0.1) { const v = score(a); if (v > bs) { bs = v; best = a; } }
+  return Math.round(best * 10) / 10;
+}
+const hiFromBright = b => 240 - b;
+function rebuildNorm() {
+  S.norm = S.autoFix ? applyNorm(S.src, S.bg, hiFromBright(S.bright)) : S.src;
+  S.qc = quarterCanvas(S.norm, S.quarter);
+}
+function startPhoto(cv) {
+  S.src = shrinkCanvas(cv); S.quarter = 0; S.angle = 0; S.bright = 0; S.autoFix = true;
+  $('#auto-fix').checked = true; $('#bright').value = 0; $('#bright-out').textContent = '0';
+  S.bg = buildBgGrid(S.src); rebuildNorm();
+  S.angle = detectSkew(S.qc); if (Math.abs(S.angle) < 0.3) S.angle = 0;
+  syncAngleUI();
+  S.boxes = []; S.activeId = null; S.problems = []; S.corrected = null;
+  $('#queue-note').textContent = S.queue.length > 1 ? '사진 ' + (S.qi + 1) + ' / ' + S.queue.length : '';
+  setStep('1');
+}
+function syncAngleUI() { $('#angle').value = S.angle; $('#angle-out').textContent = (S.angle > 0 ? '+' : '') + S.angle.toFixed(1) + '°'; }
+function drawStep1() {
+  if (!S.qc || $('#st1').hidden) return;
+  const cv = $('#cv1'); const { ctx, scale, cw, ch } = fitCanvas(cv, S.qc.width, S.qc.height, $('#stage1'));
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+  ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.rotate(S.angle * Math.PI / 180); ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(S.qc, -S.qc.width * scale / 2, -S.qc.height * scale / 2, S.qc.width * scale, S.qc.height * scale); ctx.restore();
+  ctx.strokeStyle = tok('--info'); ctx.globalAlpha = 0.3; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 1; i < 12; i++) { const y = Math.round(ch * i / 12) + 0.5; ctx.moveTo(0, y); ctx.lineTo(cw, y); }
+  ctx.stroke(); ctx.globalAlpha = 1;
+}
+
+/* ------------------------------------------------------------------ step 2: pick problems */
+function suggestBoxes(cv, sens) {
+  const sc = Math.min(1, 900 / cv.width), w = Math.round(cv.width * sc), h = Math.round(cv.height * sc);
+  const t = document.createElement('canvas'); t.width = w; t.height = h; const tx = t.getContext('2d'); tx.drawImage(cv, 0, 0, w, h);
+  const d = tx.getImageData(0, 0, w, h).data; const ink = new Uint8Array(w * h);
+  const mx = Math.round(w * 0.02), my = Math.round(h * 0.02);
+  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) {
+    const p = (y * w + x) * 4, r = d[p], g = d[p + 1], b = d[p + 2];
+    const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if (((r * 77 + g * 151 + b * 28) >> 8) < 165 && hi - lo < 60) ink[y * w + x] = 1;
+  }
+  const colInk = new Int32Array(w); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (ink[y * w + x]) colInk[x]++;
+  let gx = -1;
+  { const lo = Math.floor(w * 0.35), hi = Math.ceil(w * 0.65), tol = Math.max(2, Math.round(h * 0.03));
+    let best = 0, bs = -1, run = 0, rs = -1;
+    for (let x = lo; x <= hi; x++) { if (colInk[x] <= tol) { if (run === 0) rs = x; run++; if (run > best) { best = run; bs = rs; } } else run = 0; }
+    if (best >= Math.max(6, w * 0.012)) {
+      // inside the blank band, split where the columns are emptiest so a long line is never cut
+      let minV = Infinity; for (let x = bs; x < bs + best; x++) if (colInk[x] < minV) minV = colInk[x];
+      let bb = 0, bbs = bs, r2 = 0, rs2 = bs;
+      for (let x = bs; x < bs + best; x++) { if (colInk[x] <= minV) { if (r2 === 0) rs2 = x; r2++; if (r2 > bb) { bb = r2; bbs = rs2; } } else r2 = 0; }
+      gx = Math.round(bbs + bb / 2);
+    } }
+  const cols = gx > 0 ? [[0, gx], [gx, w]] : [[0, w]];
+  const out = [];
+  for (const [cx0, cx1] of cols) {
+    const row = new Int32Array(h);
+    for (let y = 0; y < h; y++) { let c = 0; for (let x = cx0; x < cx1; x++) c += ink[y * w + x]; row[y] = c; }
+    const minPix = Math.max(2, Math.round((cx1 - cx0) * 0.004));
+    const runs = []; let s = -1;
+    for (let y = 0; y <= h; y++) { const on = y < h && row[y] >= minPix; if (on && s < 0) s = y; else if (!on && s >= 0) { runs.push([s, y - 1]); s = -1; } }
+    const m = []; for (const r of runs) { const l = m[m.length - 1]; if (l && r[0] - l[1] <= 3) l[1] = r[1]; else m.push([r[0], r[1]]); }
+    if (!m.length) continue;
+    const gaps = []; for (let i = 1; i < m.length; i++) gaps.push(m[i][0] - m[i - 1][1]);
+    const sorted = [...gaps].sort((a, b) => a - b); const med = sorted.length ? sorted[Math.floor(sorted.length * 0.3)] : 0;
+    const thr = Math.max(med * sens, h * 0.012);
+    const groups = [[m[0][0], m[0][1]]];
+    for (let i = 1; i < m.length; i++) { if (gaps[i - 1] > thr) groups.push([m[i][0], m[i][1]]); else groups[groups.length - 1][1] = m[i][1]; }
+    for (const [y0, y1] of groups) {
+      if (y1 - y0 < h * 0.022) continue;
+      let xa = cx1, xb = cx0;
+      for (let y = y0; y <= y1; y++) for (let x = cx0; x < cx1; x++) if (ink[y * w + x]) { if (x < xa) xa = x; if (x > xb) xb = x; }
+      if (xb - xa < w * 0.08) continue;
+      const pad = Math.round(w * 0.012);
+      out.push({ x0: xa - pad, y0: y0 - pad, x1: xb + pad, y1: y1 + pad });
+    }
+  }
+  const W = cv.width, H = cv.height;
+  return out.map(b => { const x0 = clamp(b.x0 / sc, 0, W), y0 = clamp(b.y0 / sc, 0, H), x1 = clamp(b.x1 / sc, 0, W), y1 = clamp(b.y1 / sc, 0, H); return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; });
+}
+function iou(a, b) {
+  const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y), x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
+  const i = Math.max(0, x1 - x0) * Math.max(0, y1 - y0); return i / (a.w * a.h + b.w * b.h - i || 1);
+}
+function runSuggest() {
+  S.boxes = S.boxes.filter(b => b.picked);
+  const sug = suggestBoxes(S.corrected, S.sens);
+  for (const s of sug) { if (S.boxes.some(b => iou(b, s) > 0.4)) continue; S.boxes.push({ id: ++S.boxSeq, x: s.x, y: s.y, w: s.w, h: s.h, picked: false, custom: false, order: 0 }); }
+}
+const activeBox = () => S.boxes.find(b => b.id === S.activeId);
+const handlesOf = b => [['nw', b.x, b.y], ['n', b.x + b.w / 2, b.y], ['ne', b.x + b.w, b.y], ['e', b.x + b.w, b.y + b.h / 2], ['se', b.x + b.w, b.y + b.h], ['s', b.x + b.w / 2, b.y + b.h], ['sw', b.x, b.y + b.h], ['w', b.x, b.y + b.h / 2]];
+const pickedList = () => S.boxes.filter(b => b.picked).sort((a, b) => a.order - b.order);
+function pick(b) { b.picked = true; b.order = ++S.pickSeq; S.activeId = b.id; }
+function unpick(b) { b.picked = false; if (b.custom) S.boxes = S.boxes.filter(x => x !== b); S.activeId = null; }
+function updatePickUI() { const n = pickedList().length; $('#pick-count').textContent = n; $('#btn-to3').disabled = n === 0; $('#btn-unpick-all').disabled = n === 0; }
+function drawStep2() {
+  if (!S.corrected || $('#st2').hidden) return;
+  const cv = $('#cv2'); const { ctx, scale, cw, ch } = fitCanvas(cv, S.corrected.width, S.corrected.height, $('#stage2'));
+  S.s2 = scale; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(S.corrected, 0, 0, cw, ch);
+  const info = tok('--info'), infoSoft = tok('--info-soft'), acc = tok('--accent'), accFill = tok('--accent-fill');
+  for (const b of S.boxes.filter(b => !b.picked)) {
+    ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = info; ctx.fillStyle = infoSoft;
+    ctx.fillRect(b.x * scale, b.y * scale, b.w * scale, b.h * scale); ctx.strokeRect(b.x * scale, b.y * scale, b.w * scale, b.h * scale);
+  }
+  ctx.setLineDash([]);
+  pickedList().forEach((b, i) => {
+    const x = b.x * scale, y = b.y * scale, w = b.w * scale, h = b.h * scale;
+    ctx.lineWidth = 2.5; ctx.strokeStyle = acc; ctx.fillStyle = accFill; ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = acc; ctx.beginPath(); ctx.arc(x + 14, y + 14, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '600 12px ' + tok('--font-body'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), x + 14, y + 14.5);
+  });
+  const a = activeBox();
+  if (a && a.picked) for (const [, hx, hy] of handlesOf(a)) { ctx.fillStyle = '#fff'; ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.fillRect(hx * scale - 5, hy * scale - 5, 10, 10); ctx.strokeRect(hx * scale - 5, hy * scale - 5, 10, 10); }
+  if (S.tmp) { ctx.setLineDash([5, 3]); ctx.lineWidth = 2; ctx.strokeStyle = acc; ctx.strokeRect(S.tmp.x * scale, S.tmp.y * scale, S.tmp.w * scale, S.tmp.h * scale); ctx.setLineDash([]); }
+}
+function bindStage2() {
+  const cv = $('#cv2'); let drag = null;
+  const toImg = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / S.s2, y: (e.clientY - r.top) / S.s2 }; };
+  const hit = p => {
+    const a = activeBox(); const R = 16 / S.s2;
+    if (a && a.picked) for (const [k, hx, hy] of handlesOf(a)) if (Math.abs(p.x - hx) <= R && Math.abs(p.y - hy) <= R) return { type: 'handle', box: a, handle: k };
+    let best = null;
+    for (const b of S.boxes) if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { if (!best || b.w * b.h < best.w * best.h) best = b; }
+    return best ? { type: 'box', box: best } : { type: 'none' };
+  };
+  const curMap = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
+  cv.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; cv.setPointerCapture(e.pointerId);
+    const p = toImg(e), h = hit(p);
+    drag = { start: p, moved: false, h, sx: e.clientX, sy: e.clientY, orig: h.box ? { x: h.box.x, y: h.box.y, w: h.box.w, h: h.box.h } : null };
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', e => {
+    const p = toImg(e);
+    if (!drag) { const h = hit(p); cv.style.cursor = h.type === 'handle' ? curMap[h.handle] : h.type === 'box' ? (h.box.picked ? 'move' : 'pointer') : 'crosshair'; return; }
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    const W = S.corrected.width, H = S.corrected.height, min = 24 / S.s2, dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (drag.h.type === 'none') {
+      const x0 = clamp(Math.min(drag.start.x, p.x), 0, W), x1 = clamp(Math.max(drag.start.x, p.x), 0, W), y0 = clamp(Math.min(drag.start.y, p.y), 0, H), y1 = clamp(Math.max(drag.start.y, p.y), 0, H);
+      S.tmp = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    } else if (drag.h.type === 'box') {
+      const b = drag.h.box; if (!b.picked) pick(b); else S.activeId = b.id;
+      b.x = clamp(drag.orig.x + dx, 0, W - b.w); b.y = clamp(drag.orig.y + dy, 0, H - b.h);
+    } else {
+      const b = drag.h.box, k = drag.h.handle, o = drag.orig; let x0 = o.x, y0 = o.y, x1 = o.x + o.w, y1 = o.y + o.h;
+      if (k.includes('w')) x0 = clamp(o.x + dx, 0, x1 - min);
+      if (k.includes('e')) x1 = clamp(o.x + o.w + dx, x0 + min, W);
+      if (k.includes('n')) y0 = clamp(o.y + dy, 0, y1 - min);
+      if (k.includes('s')) y1 = clamp(o.y + o.h + dy, y0 + min, H);
+      b.x = x0; b.y = y0; b.w = x1 - x0; b.h = y1 - y0;
+    }
+    updatePickUI(); drawStep2();
+  });
+  const end = e => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (!d.moved) {
+      if (d.h.type === 'box') { const b = d.h.box; if (!b.picked) pick(b); else if (S.activeId === b.id) unpick(b); else S.activeId = b.id; }
+      else if (d.h.type === 'none') S.activeId = null;
+    } else if (d.h.type === 'none' && S.tmp && S.tmp.w * S.s2 > 24 && S.tmp.h * S.s2 > 24) {
+      const b = { id: ++S.boxSeq, x: S.tmp.x, y: S.tmp.y, w: S.tmp.w, h: S.tmp.h, picked: false, custom: true, order: 0 }; S.boxes.push(b); pick(b);
+    }
+    S.tmp = null; updatePickUI(); drawStep2();
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', () => { drag = null; S.tmp = null; drawStep2(); });
+  window.addEventListener('keydown', e => {
+    if (S.tab !== 'make' || S.stepName !== '2') return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { const a = activeBox(); if (a && a.picked) { unpick(a); updatePickUI(); drawStep2(); e.preventDefault(); } }
+  });
+}
+
+/* ------------------------------------------------------------------ step 3: clean up */
+/* Whiten every flagged pixel, plus a 2px ring around them. The ring only takes light pixels (soft edges of
+   the stroke), so dark printed glyphs that sit next to a removed mark keep their cores. */
+function eraseMask(d, w, h, m, ring) {
+  const n = w * h; let cur = m;
+  for (let pass = 0; pass < ring; pass++) {
+    const nx = new Uint8Array(cur);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!cur[y * w + x]) continue;
+      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx >= 0 && xx < w) nx[yy * w + xx] = 1; } }
+    }
+    cur = nx;
+  }
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (!cur[i]) continue;
+    if (!m[i] && ((d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8) < 140) continue;
+    d[p] = 255; d[p + 1] = 255; d[p + 2] = 255;
+  }
+}
+function removeColor(id, s) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, T = Math.round(80 - s * 0.55);
+  const m = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const r = d[p], g = d[p + 1], b = d[p + 2];
+    const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if (hi - lo > T) m[i] = 1;
+  }
+  eraseMask(d, w, h, m, 2);
+}
+function removePencil(id, s) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, cut = Math.round(150 - s * 0.7), INK = 235;
+  const lum = new Uint8Array(n); for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8;
+  const label = new Int32Array(n), stack = new Int32Array(n), mins = [0]; let nl = 0;
+  for (let i = 0; i < n; i++) {
+    if (lum[i] >= INK || label[i]) continue;
+    nl++; let min = lum[i], sp = 0; stack[sp++] = i; label[i] = nl;
+    while (sp) {
+      const j = stack[--sp]; if (lum[j] < min) min = lum[j];
+      const x = j % w, y = (j - x) / w;
+      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (label[k] || lum[k] >= INK) continue; label[k] = nl; stack[sp++] = k; } }
+    }
+    mins[nl] = min;
+  }
+  const m = new Uint8Array(n); let any = false;
+  for (let i = 0; i < n; i++) { const L = label[i]; if (L && mins[L] > cut) { m[i] = 1; any = true; } }
+  if (any) eraseMask(d, w, h, m, 2);
+}
+function ensureBase(p) {
+  const key = [S.fx.color, S.fx.colorS, S.fx.pencil, S.fx.pencilS].join('|');
+  if (p.base && p.baseKey === key) return;
+  const w = p.crop.width, h = p.crop.height; const id = p.crop.getContext('2d').getImageData(0, 0, w, h);
+  if (S.fx.color) removeColor(id, S.fx.colorS);
+  if (S.fx.pencil) removePencil(id, S.fx.pencilS);
+  const b = document.createElement('canvas'); b.width = w; b.height = h; b.getContext('2d').putImageData(id, 0, 0);
+  p.base = b; p.baseKey = key;
+}
+function renderFinal(p) {
+  ensureBase(p);
+  if (!p.final) { p.final = document.createElement('canvas'); p.final.width = p.crop.width; p.final.height = p.crop.height; }
+  const x = p.final.getContext('2d'); x.clearRect(0, 0, p.final.width, p.final.height); x.drawImage(p.base, 0, 0);
+  x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round';
+  for (const s of p.strokes) {
+    if (s.pts.length <= 2) { x.beginPath(); x.arc(s.pts[0], s.pts[1], s.size / 2, 0, Math.PI * 2); x.fill(); continue; }
+    x.lineWidth = s.size; x.beginPath(); x.moveTo(s.pts[0], s.pts[1]); for (let i = 2; i < s.pts.length; i += 2) x.lineTo(s.pts[i], s.pts[i + 1]); x.stroke();
+  }
+}
+function buildProblems() {
+  const old = new Map(S.problems.map(p => [p.id, p]));
+  S.problems = pickedList().map(b => {
+    const bx = Math.round(clamp(b.x, 0, S.corrected.width - 8)), by = Math.round(clamp(b.y, 0, S.corrected.height - 8));
+    const bw = Math.max(8, Math.min(Math.round(b.w), S.corrected.width - bx)), bh = Math.max(8, Math.min(Math.round(b.h), S.corrected.height - by));
+    const sig = [bx, by, bw, bh].join(','); const o = old.get(b.id); if (o && o.sig === sig) return o;
+    const crop = document.createElement('canvas'); crop.width = bw; crop.height = bh;
+    crop.getContext('2d', { willReadFrequently: true }).drawImage(S.corrected, bx, by, bw, bh, 0, 0, bw, bh);
+    return { id: b.id, sig, crop, label: '', strokes: [], base: null, baseKey: '', final: null };
+  });
+}
+function drawStep3() {
+  const p = cur(); if (!p || $('#st3').hidden) return;
+  renderFinal(p);
+  const cv = $('#cv3'); const { ctx, scale, cw, ch } = fitCanvas(cv, p.crop.width, p.crop.height, $('#stage3'), 2);
+  S.s3 = scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(p.final, 0, 0, cw, ch);
+  if (S.hover) { ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(S.hover.x * scale, S.hover.y * scale, Math.max(3, S.brush / 2), 0, Math.PI * 2); ctx.stroke(); }
+}
+function drawThumb(c, p) {
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  const src = p.final || p.crop, s = Math.min(c.width / src.width, c.height / src.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, src.width * s, src.height * s);
+}
+function renderStrip() {
+  const el = $('#strip'); el.innerHTML = '';
+  S.problems.forEach((p, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'thumb' + (i === S.activeP ? ' on' : ''); b.setAttribute('aria-label', (i + 1) + '번째 문제');
+    const c = document.createElement('canvas'); c.width = 184; c.height = 140; drawThumb(c, p); b.append(c);
+    const n = document.createElement('span'); n.textContent = i + 1; b.append(n);
+    b.onclick = () => { S.activeP = i; showProblem(); renderStrip(); };
+    el.append(b);
+  });
+}
+function showProblem() {
+  const p = cur(); if (!p) return;
+  $('#p-label').value = p.label; $('#p-index').textContent = '문제 ' + (S.activeP + 1) + ' / ' + S.problems.length;
+  drawStep3();
+}
+const defaultExam = () => { const d = new Date(); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 시험'; };
+function enterStep3() {
+  buildProblems(); S.activeP = clamp(S.activeP, 0, S.problems.length - 1);
+  $('#exam').value = $('#exam').value || S.lastExam || defaultExam();
+  fillExamList();
+  setStep('3'); renderStrip(); showProblem();
+}
+function fillExamList() { const names = [...new Set(ITEMS.map(i => i.exam))]; $('#exam-list').innerHTML = names.map(n => '<option value="' + esc(n) + '">').join(''); }
+function bindStage3() {
+  const cv = $('#cv3'); let cur_ = null;
+  const toImg = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / S.s3, y: (e.clientY - r.top) / S.s3 }; };
+  cv.style.cursor = 'crosshair';
+  cv.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; const p = cur(); if (!p) return; cv.setPointerCapture(e.pointerId);
+    const pt = toImg(e); cur_ = { size: S.brush / S.s3, pts: [pt.x, pt.y] }; p.strokes.push(cur_); S.hover = pt; drawStep3(); e.preventDefault();
+  });
+  const move = raf(() => drawStep3());
+  cv.addEventListener('pointermove', e => {
+    const pt = toImg(e); S.hover = pt;
+    if (cur_) { cur_.pts.push(pt.x, pt.y); } move();
+  });
+  const end = () => { if (!cur_) return; cur_ = null; const p = cur(); if (p) { renderFinal(p); refreshThumb(); } drawStep3(); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('pointerleave', () => { S.hover = null; if (!cur_) drawStep3(); });
+}
+function refreshThumb() { const c = $$('#strip .thumb canvas')[S.activeP]; if (c) drawThumb(c, cur()); }
+const applyFx = raf(() => { const p = cur(); if (!p) return; drawStep3(); refreshThumb(); });
+
+async function trimToBlob(cv) {
+  const w = cv.width, h = cv.height, d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const p = (y * w + x) * 4; if (d[p] < 225 || d[p + 1] < 225 || d[p + 2] < 225) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+  let out = cv;
+  if (x1 >= 0) {
+    const pad = 14; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+    out = document.createElement('canvas'); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    const o = out.getContext('2d'); o.fillStyle = '#fff'; o.fillRect(0, 0, out.width, out.height); o.drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  }
+  return { blob: await blobOf(out, 'image/jpeg', 0.92), w: out.width, h: out.height };
+}
+async function saveAll() {
+  if (!S.problems.length) return;
+  const exam = $('#exam').value.trim() || defaultExam(); $('#exam').value = exam;
+  const btn = $('#btn-save'); btn.disabled = true; toast('저장하는 중…', 0);
+  try {
+    const t0 = Date.now();
+    for (let i = 0; i < S.problems.length; i++) {
+      const p = S.problems[i]; renderFinal(p);
+      const { blob, w, h } = await trimToBlob(p.final);
+      const item = { id: uid(), exam, label: p.label.trim(), w, h, createdAt: t0 + i, blob };
+      await Store.put(item); ITEMS.push(item);
+      await nextFrame();
+    }
+    S.lastExam = exam; hideToast(); updateCounts(); fillExamList();
+    const n = S.problems.length;
+    $('#done-title').textContent = n + '문제를 보관함에 담았어요';
+    $('#done-sub').textContent = exam + (Store.persistent ? '' : ' · 이 화면에서는 페이지를 닫으면 사라져요');
+    const more = S.qi + 1 < S.queue.length; $('#btn-next-photo').hidden = !more;
+    if (more) $('#btn-next-photo').textContent = '다음 사진 (' + (S.qi + 2) + ' / ' + S.queue.length + ')';
+    S.problems = []; S.boxes = []; S.activeId = null;
+    setStep('done');
+  } catch (e) { toast('저장하지 못했어요. 다시 시도해 주세요.'); }
+  finally { btn.disabled = false; }
+}
+
+/* ------------------------------------------------------------------ shelf */
+function updateCounts() { const c = $('#shelf-count'); c.textContent = ITEMS.length; c.hidden = ITEMS.length === 0; }
+function groupByExam(items) {
+  const m = new Map(); for (const it of items) { if (!m.has(it.exam)) m.set(it.exam, []); m.get(it.exam).push(it); }
+  const arr = [...m.entries()].map(([name, list]) => ({ name, list: list.sort((a, b) => a.createdAt - b.createdAt), last: Math.max(...list.map(i => i.createdAt)) }));
+  return arr.sort((a, b) => b.last - a.last);
+}
+function cardHtml(it, showExam) {
+  const sel = S.sel.has(it.id), armed = S.armed === it.id;
+  return '<article class="card' + (sel ? ' sel' : '') + '"><button type="button" class="thumbbtn" data-act="sel" data-id="' + it.id + '" aria-pressed="' + sel + '" aria-label="' + esc((it.label || '번호 없음') + ' 선택') + '">' +
+    '<img src="' + urlOf(it) + '" alt="' + esc(it.label || '저장한 문제') + '"><span class="tick">' + ico('check') + '</span></button>' +
+    '<div class="card-foot"><div class="txt"><span class="clabel">' + esc(it.label || '번호 없음') + '</span>' + (showExam ? '<span class="cexam">' + esc(it.exam) + '</span>' : '') + '</div>' +
+    '<button type="button" class="icon-btn" data-act="zoom" data-id="' + it.id + '" aria-label="크게 보기">' + ico('expand') + '</button>' +
+    '<button type="button" class="icon-btn danger' + (armed ? ' on' : '') + '" data-act="del" data-id="' + it.id + '" aria-label="삭제">' + (armed ? '정말?' : ico('trash')) + '</button></div></article>';
+}
+let shelfGroups = [];
+function renderShelf() {
+  if (S.tab !== 'shelf') return;
+  $('#shelf-warn').hidden = Store.persistent;
+  $$('.bar .seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.shelfView)));
+  const root = $('#shelf-body');
+  $('#shelf-sub').textContent = ITEMS.length ? ITEMS.length + '문제 · 이 브라우저에 저장돼요' : '';
+  if (!ITEMS.length) {
+    root.innerHTML = '<div class="emptybox"><h2 class="h2">아직 담은 문제가 없어요</h2><p>시험지 사진을 올려 틀린 문제를 고르고 필기를 지우면, 여기 시험별로 모여요.</p><button class="btn primary" type="button" data-act="goto-make">사진 올리러 가기</button></div>';
+    renderSelbar(); return;
+  }
+  if (S.shelfView === 'all') {
+    const list = [...ITEMS].sort((a, b) => b.createdAt - a.createdAt);
+    root.innerHTML = '<div class="folder"><div class="cards">' + list.map(it => cardHtml(it, true)).join('') + '</div></div>';
+  } else {
+    shelfGroups = groupByExam(ITEMS);
+    root.innerHTML = shelfGroups.map((g, i) => {
+      const allSel = g.list.every(it => S.sel.has(it.id)), armed = S.armed === 'exam:' + g.name;
+      return '<section class="folder"><div class="folder-head">' + ico('folder') + '<h3>' + esc(g.name) + '</h3><span class="n">' + g.list.length + '문제</span>' +
+        '<button type="button" class="btn small" data-act="sel-exam" data-i="' + i + '">' + (allSel ? '전체 해제' : '전체 선택') + '</button>' +
+        '<button type="button" class="btn small danger" data-act="del-exam" data-i="' + i + '">' + (armed ? '정말 삭제?' : '시험 삭제') + '</button></div>' +
+        '<div class="cards">' + g.list.map(it => cardHtml(it, false)).join('') + '</div></section>';
+    }).join('');
+  }
+  renderSelbar();
+}
+function renderSelbar() { const n = S.sel.size; $('#selbar').hidden = n === 0 || S.tab !== 'shelf'; $('#sel-n').textContent = n; }
+let armT;
+function arm(key) { S.armed = key; clearTimeout(armT); armT = setTimeout(() => { S.armed = null; renderShelf(); }, 3000); renderShelf(); }
+async function removeItems(ids) {
+  for (const id of ids) { await Store.del(id); const u = urlCache.get(id); if (u) { URL.revokeObjectURL(u); urlCache.delete(id); } const b = bmpCache.get(id); if (b && b.close) b.close(); bmpCache.delete(id); S.sel.delete(id); }
+  ITEMS = ITEMS.filter(i => !ids.includes(i.id)); updateCounts(); fillExamList(); renderShelf();
+}
+$('#shelf-body').addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  if (act === 'sel') { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); renderShelf(); }
+  else if (act === 'zoom') { const it = ITEMS.find(i => i.id === id); if (it) { $('#lb-img').src = urlOf(it); $('#lb').hidden = false; $('#lb-close').focus(); } }
+  else if (act === 'del') { if (S.armed === id) { clearTimeout(armT); S.armed = null; await removeItems([id]); toast('삭제했어요.'); } else arm(id); }
+  else if (act === 'sel-exam') { const g = shelfGroups[+el.dataset.i]; const all = g.list.every(it => S.sel.has(it.id)); g.list.forEach(it => all ? S.sel.delete(it.id) : S.sel.add(it.id)); renderShelf(); }
+  else if (act === 'del-exam') { const g = shelfGroups[+el.dataset.i], key = 'exam:' + g.name; if (S.armed === key) { clearTimeout(armT); S.armed = null; await removeItems(g.list.map(i => i.id)); toast('시험을 삭제했어요.'); } else arm(key); }
+  else if (act === 'goto-make') showTab('make');
+});
+$('#lb').addEventListener('click', e => { if (e.target.id === 'lb' || e.target.id === 'lb-close') $('#lb').hidden = true; });
+window.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lb').hidden = true; });
+
+/* ------------------------------------------------------------------ pdf */
+const selectedItems = () => {
+  const first = new Map(); for (const it of ITEMS) { if (!first.has(it.exam) || it.createdAt < first.get(it.exam)) first.set(it.exam, it.createdAt); }
+  return ITEMS.filter(i => S.sel.has(i.id)).sort((a, b) => first.get(a.exam) - first.get(b.exam) || a.exam.localeCompare(b.exam) || a.createdAt - b.createdAt);
+};
+async function getBmp(it) {
+  if (bmpCache.has(it.id)) return bmpCache.get(it.id);
+  let b; try { b = await createImageBitmap(it.blob); } catch (e) { b = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = urlOf(it); }); }
+  bmpCache.set(it.id, b); return b;
+}
+async function renderPages(sel, o, dpi) {
+  try { await document.fonts.load('600 16px "IBM Plex Sans KR"'); await document.fonts.load('400 16px "IBM Plex Sans KR"'); } catch (e) {}
+  const mm = dpi / 25.4, PW = Math.round(210 * mm), PH = Math.round(297 * mm);
+  const per = o.per, pages = Math.ceil(sel.length / per);
+  const M = 14 * mm, headH = 11 * mm, footH = 9 * mm, x0 = M, cw = PW - 2 * M, y0 = M + headH, y1 = PH - M - footH, slotH = (y1 - y0) / per;
+  const gapX = 6 * mm, leftW = cw * o.ratio - gapX / 2, rightW = cw * (1 - o.ratio) - gapX / 2, rx = x0 + cw * o.ratio + gapX / 2;
+  const F = '"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+  const d = new Date(), dateStr = d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
+  const fit = (x, text, max) => { if (x.measureText(text).width <= max) return text; let t = text; while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; };
+  const out = [];
+  for (let pg = 0; pg < pages; pg++) {
+    const c = document.createElement('canvas'); c.width = PW; c.height = PH; const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, PW, PH); x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+    x.fillStyle = '#111827'; x.font = '600 ' + 4.6 * mm + 'px ' + F; x.fillText(fit(x, o.title || '오답노트', cw * 0.7), x0, M + 5 * mm);
+    x.font = '400 ' + 3.2 * mm + 'px ' + F; x.fillStyle = '#6b7280'; x.textAlign = 'right'; x.fillText(dateStr, x0 + cw, M + 5 * mm); x.textAlign = 'left';
+    x.strokeStyle = '#111827'; x.lineWidth = 0.35 * mm; x.beginPath(); x.moveTo(x0, M + 8 * mm); x.lineTo(x0 + cw, M + 8 * mm); x.stroke();
+    for (let k = 0; k < per; k++) {
+      const idx = pg * per + k; if (idx >= sel.length) break;
+      const it = sel[idx], sy = y0 + k * slotH, padT = 3 * mm, labelH = 6 * mm;
+      if (k > 0) { x.strokeStyle = '#e5e7eb'; x.lineWidth = 0.25 * mm; x.beginPath(); x.moveTo(x0, sy); x.lineTo(x0 + cw, sy); x.stroke(); }
+      x.fillStyle = '#111827'; x.font = '600 ' + 3.7 * mm + 'px ' + F;
+      const head = (idx + 1) + (it.label ? '  ·  ' + it.label : ''); x.fillText(fit(x, head, leftW * 0.6), x0, sy + padT + 4 * mm);
+      x.fillStyle = '#6b7280'; x.font = '400 ' + 3 * mm + 'px ' + F; x.textAlign = 'right'; x.fillText(fit(x, it.exam, leftW * 0.4), x0 + leftW, sy + padT + 4 * mm); x.textAlign = 'left';
+      const bmp = await getBmp(it), bw = bmp.naturalWidth || bmp.width, bh = bmp.naturalHeight || bmp.height;
+      const availH = slotH - padT - labelH - 2 * mm; const s = Math.min(leftW / bw, availH / bh, dpi / 140);
+      x.imageSmoothingQuality = 'high'; x.drawImage(bmp, x0, sy + padT + labelH, bw * s, bh * s);
+      const by = sy + padT + 1 * mm, bh2 = slotH - padT - 3 * mm;
+      x.strokeStyle = '#c4cad6'; x.lineWidth = 0.3 * mm; x.strokeRect(rx, by, rightW, bh2);
+      x.save(); x.beginPath(); x.rect(rx, by, rightW, bh2); x.clip();
+      x.strokeStyle = '#e2e6ee'; x.lineWidth = 0.2 * mm;
+      if (o.pat === 'lines') { for (let yy = by + 12 * mm; yy < by + bh2; yy += 8 * mm) { x.beginPath(); x.moveTo(rx, yy); x.lineTo(rx + rightW, yy); x.stroke(); } }
+      if (o.pat === 'grid') { for (let yy = by + 6 * mm; yy < by + bh2; yy += 6 * mm) { x.beginPath(); x.moveTo(rx, yy); x.lineTo(rx + rightW, yy); x.stroke(); } for (let xx = rx + 6 * mm; xx < rx + rightW; xx += 6 * mm) { x.beginPath(); x.moveTo(xx, by); x.lineTo(xx, by + bh2); x.stroke(); } }
+      x.restore();
+      x.fillStyle = '#9ca3af'; x.font = '500 ' + 3 * mm + 'px ' + F; x.fillText('다시 풀기', rx + 2.5 * mm, by + 5 * mm);
+    }
+    x.fillStyle = '#9ca3af'; x.font = '400 ' + 3 * mm + 'px ' + F; x.textAlign = 'center'; x.fillText((pg + 1) + ' / ' + pages, PW / 2, PH - M); x.textAlign = 'left';
+    out.push(c);
+  }
+  return out;
+}
+async function buildPdf(canvases) {
+  const enc = new TextEncoder(), parts = [], offs = []; let pos = 0;
+  const add = dd => { const u = typeof dd === 'string' ? enc.encode(dd) : dd; parts.push(u); pos += u.length; };
+  add('%PDF-1.4\n%âãÏÓ\n');
+  const n = canvases.length, kids = canvases.map((_, i) => (3 + i * 3) + ' 0 R').join(' ');
+  offs[1] = pos; add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  offs[2] = pos; add('2 0 obj\n<< /Type /Pages /Kids [' + kids + '] /Count ' + n + ' >>\nendobj\n');
+  const W = 595.28, H = 841.89;
+  for (let i = 0; i < n; i++) {
+    const c = canvases[i], blob = await blobOf(c, 'image/jpeg', 0.92), jpg = new Uint8Array(await blob.arrayBuffer());
+    const po = 3 + i * 3, co = po + 1, io = po + 2, content = 'q ' + W + ' 0 0 ' + H + ' 0 0 cm /Im0 Do Q';
+    offs[po] = pos; add(po + ' 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 ' + io + ' 0 R >> >> /Contents ' + co + ' 0 R >>\nendobj\n');
+    offs[co] = pos; add(co + ' 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream\nendobj\n');
+    offs[io] = pos; add(io + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + c.width + ' /Height ' + c.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); add(jpg); add('\nendstream\nendobj\n');
+  }
+  const total = 2 + n * 3, xr = pos; let xs = 'xref\n0 ' + (total + 1) + '\n0000000000 65535 f \n';
+  for (let i = 1; i <= total; i++) xs += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  add(xs); add('trailer\n<< /Size ' + (total + 1) + ' /Root 1 0 R >>\nstartxref\n' + xr + '\n%%EOF\n');
+  return new Blob(parts, { type: 'application/pdf' });
+}
+function renderPdfTab() {
+  if (S.tab !== 'pdf') return;
+  const sel = selectedItems(); $('#pdf-empty').hidden = sel.length > 0; $('#pdf-main').hidden = sel.length === 0;
+  if (!sel.length) return;
+  const pages = Math.ceil(sel.length / S.pdf.per); $('#pdf-sum').textContent = sel.length + '문제 · A4 ' + pages + '쪽';
+  schedulePreview();
+}
+let pvTok = 0;
+const schedulePreview = debounce(async () => {
+  if (S.tab !== 'pdf') return; const my = ++pvTok, sel = selectedItems(); if (!sel.length) return;
+  const wrap = $('#pages'); $('#pdf-msg').textContent = '미리보기를 만드는 중…';
+  try {
+    const cvs = await renderPages(sel, S.pdf, 80); if (my !== pvTok) return;
+    wrap.innerHTML = ''; cvs.forEach((c, i) => { const w = document.createElement('div'); w.className = 'page-wrap'; w.append(c); const s = document.createElement('span'); s.textContent = (i + 1) + ' / ' + cvs.length; w.append(s); wrap.append(w); });
+    $('#pdf-msg').textContent = '';
+  } catch (e) { $('#pdf-msg').textContent = '미리보기를 만들지 못했어요.'; }
+}, 160);
+async function savePdf() {
+  const sel = selectedItems(); if (!sel.length) return;
+  const btn = $('#btn-pdf'); btn.disabled = true; const label = btn.innerHTML; btn.textContent = 'PDF 만드는 중…';
+  try {
+    const pages = await renderPages(sel, S.pdf, 200); const blob = await buildPdf(pages);
+    const d = new Date(), stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    const name = ((S.pdf.title || '오답노트').replace(/[\\/:*?"<>|]/g, ' ').trim() || '오답노트') + '_' + stamp + '.pdf';
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); toast('PDF를 저장했어요.'); }
+      catch (err) { if (err && err.code === 'declined') toast('저장을 취소했어요.'); else toast('이 화면에서는 파일을 저장할 수 없어요.'); }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove();
+      toast('PDF 다운로드를 시작했어요.');
+    }
+  } catch (e) { toast('PDF를 만들지 못했어요. 다시 시도해 주세요.'); }
+  finally { btn.disabled = false; btn.innerHTML = label; }
+}
+
+/* ------------------------------------------------------------------ sample paper */
+async function makeSample() {
+  try { await document.fonts.load('400 28px "IBM Plex Sans KR"'); await document.fonts.load('700 28px "IBM Plex Sans KR"'); } catch (e) {}
+  let seed = 7; const rnd = (a, b) => { seed = (seed * 16807) % 2147483647; return a + (seed / 2147483647) * (b - a); };
+  const F = '"IBM Plex Sans KR","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+  const W = 1500, H = 2060, pg = document.createElement('canvas'); pg.width = W; pg.height = H; const x = pg.getContext('2d');
+  x.fillStyle = '#fcfbf7'; x.fillRect(0, 0, W, H); x.fillStyle = '#1b1b1b'; x.textBaseline = 'alphabetic';
+  x.font = '700 46px ' + F; x.fillText('중학교 과학 모의평가', 90, 118);
+  x.font = '400 27px ' + F; x.fillText('2학년 3반      이름 ____________', 90, 170); x.fillRect(90, 196, W - 180, 3);
+  const Q = [
+    ['물이 얼어 얼음이 될 때 변하지 않는 것은?'], ['다음 중 화학 변화가 아닌 것은?'],
+    ['그림은 어떤 물질을 가열할 때 시간에 따른', '온도를 나타낸 것이다. 이 물질의 끓는점은?'], ['속력이 일정한 물체가 20초 동안 60 m를', '이동했다. 이 물체의 속력은?'],
+    ['볼록 렌즈를 통과한 평행한 빛은 어떻게 되는가?'], ['식물의 광합성이 일어나는 세포 소기관은?'], ['다음 중 혼합물이 아닌 것은?'], ['지구에서 낮과 밤이 생기는 까닭은?']
+  ];
+  const C = [['① 부피', '② 밀도', '③ 질량', '④ 입자 배열'], ['① 철이 녹슨다', '② 종이가 불에 탄다', '③ 얼음이 녹는다', '④ 빵이 부풀어 오른다'], ['① 20℃', '② 40℃', '③ 80℃', '④ 100℃'], ['① 2 m/s', '② 3 m/s', '③ 4 m/s', '④ 5 m/s'],
+    ['① 퍼진다', '② 한 점에 모인다', '③ 반사된다', '④ 흡수된다'], ['① 핵', '② 미토콘드리아', '③ 엽록체', '④ 리보솜'], ['① 공기', '② 소금물', '③ 증류수', '④ 흙탕물'], ['① 지구의 공전', '② 지구의 자전', '③ 달의 공전', '④ 태양의 자전']];
+  const pos = [];
+  [[90, 0], [790, 4]].forEach(([cx, from]) => {
+    let y = 290;
+    for (let q = from; q < from + 4; q++) {
+      const top = y; x.fillStyle = '#1b1b1b'; x.font = '700 31px ' + F; x.fillText(String(q + 1) + '.', cx, y);
+      x.font = '400 30px ' + F; Q[q].forEach((l, i) => { x.fillText(l, cx + 48, y + i * 44); }); y += (Q[q].length - 1) * 44 + 46;
+      if (q === 2) { // graph figure
+        const fx = cx + 60, fy = y - 8; x.strokeStyle = '#1b1b1b'; x.lineWidth = 3; x.beginPath(); x.moveTo(fx, fy); x.lineTo(fx, fy + 150); x.lineTo(fx + 330, fy + 150); x.stroke();
+        x.beginPath(); x.moveTo(fx, fy + 140); x.lineTo(fx + 90, fy + 90); x.lineTo(fx + 230, fy + 30); x.lineTo(fx + 320, fy + 30); x.stroke();
+        x.font = '400 22px ' + F; x.fillText('온도', fx - 4, fy - 6); x.fillText('시간', fx + 296, fy + 178); y += 205;
+      }
+      const ch = []; x.font = '400 28px ' + F;
+      C[q].forEach((l, i) => { x.fillText(l, cx + 48, y + i * 40); ch.push({ x: cx + 48, y: y + i * 40, w: x.measureText(l).width }); }); y += C[q].length * 40 + 54;
+      pos[q] = { cx, top: top - 30, ch };
+    }
+  });
+  const stroke = (pts, col, w) => { x.strokeStyle = col; x.lineWidth = w; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); pts.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.stroke(); };
+  const loop = (cx, cy, rx, ry, col, w) => { const p = []; for (let t = -0.4; t <= Math.PI * 2.1; t += 0.2) p.push([cx + Math.cos(t) * rx + rnd(-2.5, 2.5), cy + Math.sin(t) * ry + rnd(-2.5, 2.5)]); stroke(p, col, w); };
+  const blue = '#1c3fae', red = '#d3302a', pencil = 'rgba(80,80,80,0.55)';
+  const circ = (q, i, col) => { const c = pos[q].ch[i]; loop(c.x + c.w / 2, c.y - 10, c.w / 2 + 22, 24, col, 3.2); };
+  circ(0, 1, blue); circ(2, 1, blue); circ(3, 2, blue); circ(5, 0, blue); circ(6, 2, blue);
+  [0, 2, 5, 6].forEach(q => { const p = pos[q]; stroke([[p.cx - 26, p.top + 26], [p.cx + 4, p.top + 62]], red, 5); stroke([[p.cx + 4, p.top + 26], [p.cx - 26, p.top + 62]], red, 5); });
+  [3, 7].forEach(q => { const p = pos[q]; stroke([[p.cx - 30, p.top + 46], [p.cx - 16, p.top + 62], [p.cx + 6, p.top + 24]], red, 5); });
+  { const c = pos[2].ch[3]; stroke([[c.x + c.w + 30, c.y - 14], [c.x + c.w + 70, c.y - 34]], blue, 3); x.fillStyle = blue; x.font = 'italic 600 34px ' + F; x.fillText('끓는점 = 80', pos[2].cx + 330, pos[2].ch[1].y); }
+  { const c = pos[5]; x.fillStyle = blue; x.font = 'italic 600 32px ' + F; x.fillText('엽록체!', c.cx + 380, c.ch[2].y); stroke([[c.cx + 380, c.ch[2].y + 12], [c.cx + 500, c.ch[2].y + 6]], blue, 3); }
+  { const c = pos[0]; x.fillStyle = pencil; x.font = 'italic 400 30px ' + F; x.fillText('질량은 그대로', c.cx + 400, c.ch[0].y); stroke([[c.cx + 400, c.ch[0].y + 12], [c.cx + 560, c.ch[0].y + 10]], pencil, 2.5); stroke([[c.cx + 380, c.ch[2].y - 6], [c.cx + 420, c.ch[2].y - 26], [c.cx + 460, c.ch[2].y - 8]], pencil, 3); }
+  { const c = pos[6]; stroke([[c.cx + 440, c.top + 70], [c.cx + 470, c.top + 120], [c.cx + 430, c.top + 150]], '#222', 4); stroke([[c.cx + 450, c.top + 90], [c.cx + 500, c.top + 100]], '#222', 4); }
+  const OW = 1760, OH = 2320, out = document.createElement('canvas'); out.width = OW; out.height = OH; const o = out.getContext('2d');
+  o.fillStyle = '#d3cdc1'; o.fillRect(0, 0, OW, OH);
+  o.save(); o.translate(OW / 2, OH / 2); o.rotate(-2.4 * Math.PI / 180); o.shadowColor = 'rgba(0,0,0,.35)'; o.shadowBlur = 28; o.shadowOffsetY = 10; o.drawImage(pg, -W / 2, -H / 2); o.restore();
+  const g = o.createLinearGradient(0, 0, OW, OH * 0.45); g.addColorStop(0, 'rgba(25,25,35,.30)'); g.addColorStop(0.55, 'rgba(25,25,35,.05)'); g.addColorStop(1, 'rgba(25,25,35,0)'); o.fillStyle = g; o.fillRect(0, 0, OW, OH);
+  return out;
+}
+
+/* ------------------------------------------------------------------ wiring */
+function bind() {
+  $$('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+  const drop = $('#st-drop');
+  $('#btn-cam').onclick = () => $('#file-cam').click();
+  $('#btn-pick').onclick = () => $('#file-pick').click();
+  $('#file-cam').onchange = e => { if (e.target.files.length) handleFiles(e.target.files); e.target.value = ''; };
+  $('#file-pick').onchange = e => { if (e.target.files.length) handleFiles(e.target.files); e.target.value = ''; };
+  $('#btn-sample').onclick = async () => { toast('예시 시험지를 만드는 중…', 0); await nextFrame(); const cv = await makeSample(); S.queue = []; S.qi = 0; startPhoto(cv); hideToast(); };
+  ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { if (S.tab === 'make' && S.stepName === 'drop' && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); drop.classList.add('over'); } }));
+  ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'dragleave' && e.relatedTarget) return; drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { if (S.tab === 'make' && S.stepName === 'drop' && e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); handleFiles(e.dataTransfer.files); } });
+
+  // step 1
+  $('#angle').oninput = e => { S.angle = +e.target.value; syncAngleUI(); drawStep1(); };
+  $('#btn-auto-angle').onclick = () => { const a = detectSkew(S.qc); S.angle = a; syncAngleUI(); drawStep1(); toast(Math.abs(a) < 0.15 ? '이미 반듯해요.' : '기울기를 ' + (a > 0 ? '+' : '') + a.toFixed(1) + '° 맞췄어요.'); };
+  const rot = d => { S.quarter += d; S.qc = quarterCanvas(S.norm, S.quarter); const a = detectSkew(S.qc); S.angle = Math.abs(a) < 0.3 ? 0 : a; syncAngleUI(); drawStep1(); };
+  $('#btn-rot-l').onclick = () => rot(-1); $('#btn-rot-r').onclick = () => rot(1);
+  const normNow = raf(() => { rebuildNorm(); drawStep1(); });
+  $('#auto-fix').onchange = e => { S.autoFix = e.target.checked; $('#bright').disabled = !S.autoFix; normNow(); };
+  $('#bright').oninput = e => { S.bright = +e.target.value; $('#bright-out').textContent = (S.bright > 0 ? '+' : '') + S.bright; normNow(); };
+  $('#btn-other').onclick = () => { S.queue = []; setStep('drop'); };
+  $('#btn-to2').onclick = async () => {
+    toast('문제 칸을 나누는 중…', 0); await nextFrame();
+    S.corrected = renderFine(S.qc, S.angle); S.boxes = []; S.activeId = null; S.problems = [];
+    runSuggest(); updatePickUI(); hideToast(); setStep('2');
+    toast(S.boxes.length ? '문제 칸 ' + S.boxes.length + '개를 찾았어요. 틀린 문제를 눌러 담아 보세요.' : '자동으로 나누지 못했어요. 영역을 끌어서 직접 만들어 주세요.', 3800);
+  };
+
+  // step 2
+  const sensLabel = v => v <= 15 ? '촘촘하게' : v >= 30 ? '넓게' : '보통';
+  $('#sens').oninput = e => { $('#sens-out').textContent = sensLabel(+e.target.value); };
+  $('#sens').onchange = e => { S.sens = +e.target.value / 10; runSuggest(); drawStep2(); };
+  $('#btn-resuggest').onclick = () => { S.boxes = S.boxes.filter(b => b.picked); runSuggest(); drawStep2(); toast('문제 칸 ' + S.boxes.filter(b => !b.picked).length + '개를 다시 나눴어요.'); };
+  $('#btn-unpick-all').onclick = () => { S.boxes = S.boxes.filter(b => !(b.picked && b.custom)); S.boxes.forEach(b => { b.picked = false; }); S.activeId = null; updatePickUI(); drawStep2(); };
+  $('#btn-back1').onclick = () => setStep('1');
+  $('#btn-to3').onclick = () => enterStep3();
+
+  // step 3
+  const fxIn = () => { S.fx.color = $('#fx-color').checked; S.fx.colorS = +$('#fx-color-s').value; S.fx.pencil = $('#fx-pencil').checked; S.fx.pencilS = +$('#fx-pencil-s').value; $('#fx-color-s').disabled = !S.fx.color; $('#fx-pencil-s').disabled = !S.fx.pencil; applyFx(); };
+  ['#fx-color', '#fx-color-s', '#fx-pencil', '#fx-pencil-s'].forEach(s => $(s).addEventListener('input', fxIn));
+  $('#fx-pencil-s').disabled = true;
+  $('#brush').oninput = e => { S.brush = +e.target.value; $('#brush-out').textContent = S.brush; };
+  $('#btn-undo').onclick = () => { const p = cur(); if (p && p.strokes.length) { p.strokes.pop(); applyFx(); } };
+  $('#btn-clear-strokes').onclick = () => { const p = cur(); if (p && p.strokes.length) { p.strokes = []; applyFx(); } };
+  $('#p-label').oninput = e => { const p = cur(); if (p) p.label = e.target.value; };
+  $('#btn-back2').onclick = () => setStep('2');
+  $('#btn-save').onclick = saveAll;
+  bindStage2(); bindStage3();
+
+  // done
+  $('#btn-next-photo').onclick = async () => { S.qi++; await openQueued(); };
+  $('#btn-go-shelf').onclick = () => showTab('shelf');
+  $('#btn-more').onclick = () => { S.queue = []; setStep('drop'); };
+
+  // shelf
+  $$('.bar .seg button').forEach(b => b.onclick = () => { S.shelfView = b.dataset.view; renderShelf(); });
+  $('#btn-clear-sel').onclick = () => { S.sel.clear(); renderShelf(); };
+  $('#btn-go-pdf').onclick = () => showTab('pdf');
+
+  // pdf
+  $('#btn-pdf-shelf').onclick = () => showTab('shelf');
+  $('#pdf-title').oninput = e => { S.pdf.title = e.target.value; schedulePreview(); };
+  [['#seg-per', 'per', Number], ['#seg-ratio', 'ratio', Number], ['#seg-pat', 'pat', String]].forEach(([sel, key, cast]) => {
+    $$(sel + ' button').forEach(b => b.onclick = () => { S.pdf[key] = cast(b.dataset.v); $$(sel + ' button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderPdfTab(); });
+  });
+  $('#btn-pdf').onclick = savePdf;
+
+  window.addEventListener('resize', debounce(relayout, 120));
+  new MutationObserver(() => relayout()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => relayout()); } catch (e) {}
+}
+
+(async function init() {
+  bind(); setStep('drop');
+  await Store.init(); ITEMS = await Store.all(); updateCounts(); fillExamList();
+  window.__odap = { S, get items() { return ITEMS; } };
+})();
+})();
+</script>
+
+</body>
+</html>
