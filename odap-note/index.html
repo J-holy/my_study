@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
+<script src="../shell.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>오답노트 만들기</title>
@@ -221,7 +222,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
         </div>
         <input type="file" id="file-cam" accept="image/*" capture="environment" hidden>
         <input type="file" id="file-pick" accept="image/*" multiple hidden>
-        <p class="mini">사진은 이 브라우저 안에서만 처리되고, 외부로 전송되지 않아요.</p>
+        <p class="mini">사진은 이 브라우저 안에서만 처리돼요. "문제 번호로 나누기 (서버)"를 누를 때만 서버로 보내져요.</p>
       </div>
 
       <div id="st1" class="work" hidden>
@@ -259,6 +260,10 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
             <div class="field-row"><label for="sens">나누는 간격</label><output id="sens-out" class="val">보통</output></div>
             <input type="range" id="sens" min="8" max="40" step="1" value="22">
             <button class="btn small" id="btn-resuggest" type="button">다시 나누기</button>
+          </div>
+          <div class="field">
+            <button class="btn small" id="btn-srv-split" type="button">문제 번호로 나누기 (서버)</button>
+            <p class="hint" id="srv-note"></p>
           </div>
           <div class="pickinfo"><span><b id="pick-count">0</b>개 담음</span><button class="btn small" id="btn-unpick-all" type="button">모두 해제</button></div>
           <div class="panel-foot">
@@ -736,6 +741,111 @@ function runSuggest() {
   S.boxes = S.boxes.filter(b => b.picked);
   const sug = suggestBoxes(S.corrected, S.sens);
   for (const s of sug) { if (S.boxes.some(b => iou(b, s) > 0.4)) continue; S.boxes.push({ id: ++S.boxSeq, x: s.x, y: s.y, w: s.w, h: s.h, picked: false, custom: false, order: 0 }); }
+}
+
+/* ------------------------------------------------------------------ shared OCR server (단어 시험지와 같은 라즈베리파이 서버) */
+// 서버 주소·비밀번호·기기 번호는 단어 시험지 앱이 저장한 값(wtm_srv, wtm_dev)을 그대로 함께 써요.
+const SRV_DEFAULT = 'https://pi.tail7271de.ts.net';
+function srvConf() {
+  let s = {}; try { s = JSON.parse(localStorage.getItem('wtm_srv') || '{}'); } catch (e) {}
+  // 단어 시험지와 같은 규칙: 저장된 주소가 없고 꺼 두지 않았으면 기본 서버를 써요.
+  const on = s.url ? !!s.use : !s.off;
+  const url = String(s.url || SRV_DEFAULT).trim().replace(/\/+$/, '');
+  return { on: on && !!url, url, tok: s.tok || '' };
+}
+function srvDevId() {
+  let d = ''; try { d = localStorage.getItem('wtm_dev') || ''; } catch (e) {}
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(d)) {
+    const a = 'abcdefghijklmnopqrstuvwxyz0123456789', u = crypto.getRandomValues(new Uint8Array(22));
+    d = Array.from(u, x => a[x % 36]).join(''); try { localStorage.setItem('wtm_dev', d); } catch (e) {}
+  }
+  return d;
+}
+function updateSrvUI() {
+  const c = srvConf();
+  $('#btn-srv-split').disabled = !c.on;
+  $('#srv-note').textContent = c.on
+    ? '단어 시험지와 같은 라즈베리파이 서버로 "1." "2." 같은 문제 번호를 읽어서 나눠요. 이 버튼을 누를 때만 사진이 서버로 보내지고, 서버는 사진을 저장하지 않아요.'
+    : '서버가 꺼져 있어요. 단어 시험지 탭의 서버 설정에서 켜면 여기서도 같이 쓸 수 있어요.';
+}
+async function srvOcr(cv) {
+  const c = srvConf(); if (!c.on) throw Object.assign(new Error('off'), { kind: 'off' });
+  const sc = Math.min(1, 2400 / Math.max(cv.width, cv.height));
+  let src = cv;
+  if (sc < 1) { src = document.createElement('canvas'); src.width = Math.round(cv.width * sc); src.height = Math.round(cv.height * sc); src.getContext('2d').drawImage(cv, 0, 0, src.width, src.height); }
+  const blob = await new Promise((res, rej) => src.toBlob(b => b ? res(b) : rej(new Error('img')), 'image/jpeg', 0.9));
+  const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 150000);
+  let r;
+  try { r = await fetch(c.url + '/ocr', { method: 'POST', headers: { 'X-Token': c.tok, 'X-Device': srvDevId(), 'Content-Type': 'application/octet-stream' }, body: blob, signal: ac.signal }); }
+  catch (e) { throw Object.assign(new Error('net'), { kind: 'net' }); }
+  finally { clearTimeout(tm); }
+  if (!r.ok) { let j = null; try { j = await r.json(); } catch (e) {} throw Object.assign(new Error('http'), { kind: 'http', status: r.status, body: j }); }
+  const j = await r.json();
+  return (j.words || []).map(w => ({ t: String(w.t || ''), ln: w.ln, x0: w.x0 / sc, y0: w.y0 / sc, x1: w.x1 / sc, y1: w.y1 / sc }));
+}
+function srvErrMsg(e) {
+  if (e.kind === 'off') return '서버가 꺼져 있어요. 단어 시험지 탭에서 서버를 켜 주세요.';
+  if (e.kind === 'net') return '서버에 연결하지 못했어요. 잠시 뒤 다시 해 보세요.';
+  if (e.status === 401) return '서버 비밀번호가 맞지 않아요. 단어 시험지 탭의 서버 설정을 확인해 주세요.';
+  if (e.status === 429) {
+    const b = e.body || {}, min = Math.max(1, Math.round((b.retry || 600) / 60));
+    return b.kind === 'busy' ? '지금 서버가 다른 사진을 읽고 있어요. 잠시 뒤 다시 해 보세요.' : '서버 사용량을 다 썼어요. 약 ' + min + '분 뒤에 다시 쓸 수 있어요.';
+  }
+  return '서버가 사진을 읽지 못했어요.';
+}
+// 줄 맨 앞의 "3." "12)" 같은 문제 번호를 찾아 그 아래부터 다음 번호 전까지를 한 문제로 묶어요.
+function numberBoxes(cv, words) {
+  const W = cv.width, H = cv.height, lines = {};
+  for (const w of words) (lines[w.ln] = lines[w.ln] || []).push(w);
+  let cands = [];
+  for (const k in lines) {
+    const ws = lines[k], first = ws.reduce((a, b) => b.x0 < a.x0 ? b : a);
+    const m = /^(\d{1,2})[.)](?!\d)/.exec(first.t);
+    if (m && +m[1] > 0) cands.push({ n: +m[1], x: first.x0, y: Math.min(...ws.map(w => w.y0)) });
+  }
+  if (cands.length < 2) return [];
+  // 두 단: 번호가 가운데(35%) 오른쪽에서도 시작하면 거기서 단을 나눠요.
+  const right = cands.filter(c => c.x > W * 0.35), left = cands.filter(c => c.x <= W * 0.35);
+  const split = right.length && left.length ? Math.min(...right.map(c => c.x)) - W * 0.015 : W;
+  const cols = split < W ? [[0, split], [split, W]] : [[0, W]];
+  // 단마다 왼쪽 끝에 줄 맞춰 있는 번호만 남겨요 (안쪽으로 들여 쓴 "1)" 같은 보기는 빼요).
+  let ordered = [];
+  cols.forEach(([a, b], ci) => {
+    const cs = cands.filter(c => c.x >= a && c.x < b); if (!cs.length) return;
+    const minX = Math.min(...cs.map(c => c.x));
+    cs.filter(c => c.x - minX < W * 0.05).sort((p, q) => p.y - q.y).forEach(c => ordered.push(Object.assign(c, { col: ci })));
+  });
+  // 읽는 순서대로 번호가 커지는 가장 긴 줄만 써요 (손글씨 숫자 같은 잡음을 걸러요).
+  const len = ordered.map(() => 1), prev = ordered.map(() => -1);
+  for (let i = 0; i < ordered.length; i++) for (let j = 0; j < i; j++) if (ordered[j].n < ordered[i].n && len[j] + 1 > len[i]) { len[i] = len[j] + 1; prev[i] = j; }
+  let end = len.indexOf(Math.max(...len)); const keep = [];
+  while (end >= 0) { keep.unshift(ordered[end]); end = prev[end]; }
+  if (keep.length < 2) return [];
+  const pad = Math.round(W * 0.012), out = [];
+  keep.forEach((c, i) => {
+    const [a, b] = cols[c.col], next = keep[i + 1] && keep[i + 1].col === c.col ? keep[i + 1] : null;
+    const inCol = words.filter(w => w.x0 >= a - pad && w.x0 < b && w.y0 >= c.y - pad && (!next || w.y0 < next.y - pad));
+    const bottom = next ? next.y - pad : Math.max(c.y + H * 0.03, ...inCol.map(w => w.y1)) + pad;
+    const xr = c.col === cols.length - 1 ? Math.max(c.x, ...inCol.map(w => w.x1)) + pad : b;
+    const x0 = clamp(c.x - pad, 0, W), y0 = clamp(c.y - pad, 0, H), x1 = clamp(xr, 0, W), y1 = clamp(bottom, 0, H);
+    if (x1 - x0 > W * 0.08 && y1 - y0 > H * 0.015) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  });
+  return out;
+}
+async function runSrvSplit() {
+  const btn = $('#btn-srv-split'), cv = S.corrected; if (!cv || btn.disabled) return;
+  const label = btn.textContent, t0 = Date.now();
+  btn.disabled = true; btn.textContent = '서버에서 읽는 중...';
+  const tick = setInterval(() => { btn.textContent = '서버에서 읽는 중... ' + Math.round((Date.now() - t0) / 1000) + '초'; }, 1000);
+  try {
+    const boxes = numberBoxes(cv, await srvOcr(cv));
+    if (S.corrected !== cv) return;
+    if (!boxes.length) { toast('문제 번호를 찾지 못했어요. 기존 칸은 그대로 두었어요.', 3800); return; }
+    S.boxes = S.boxes.filter(b => b.picked);
+    for (const s of boxes) { if (S.boxes.some(b => iou(b, s) > 0.4)) continue; S.boxes.push({ id: ++S.boxSeq, x: s.x, y: s.y, w: s.w, h: s.h, picked: false, custom: false, order: 0 }); }
+    drawStep2(); toast('문제 번호로 ' + boxes.length + '문제를 나눴어요.');
+  } catch (e) { toast(srvErrMsg(e), 4200); }
+  finally { clearInterval(tick); btn.textContent = label; updateSrvUI(); }
 }
 const activeBox = () => S.boxes.find(b => b.id === S.activeId);
 const handlesOf = b => [['nw', b.x, b.y], ['n', b.x + b.w / 2, b.y], ['ne', b.x + b.w, b.y], ['e', b.x + b.w, b.y + b.h / 2], ['se', b.x + b.w, b.y + b.h], ['s', b.x + b.w / 2, b.y + b.h], ['sw', b.x, b.y + b.h], ['w', b.x, b.y + b.h / 2]];
@@ -1233,7 +1343,7 @@ function bind() {
   $('#btn-to2').onclick = async () => {
     toast('문제 칸을 나누는 중…', 0); await nextFrame();
     S.corrected = renderFine(S.qc, S.angle); S.boxes = []; S.activeId = null; S.problems = [];
-    runSuggest(); updatePickUI(); hideToast(); setStep('2');
+    runSuggest(); updatePickUI(); updateSrvUI(); hideToast(); setStep('2');
     toast(S.boxes.length ? '문제 칸 ' + S.boxes.length + '개를 찾았어요. 틀린 문제를 눌러 담아 보세요.' : '자동으로 나누지 못했어요. 영역을 끌어서 직접 만들어 주세요.', 3800);
   };
 
@@ -1242,6 +1352,7 @@ function bind() {
   $('#sens').oninput = e => { $('#sens-out').textContent = sensLabel(+e.target.value); };
   $('#sens').onchange = e => { S.sens = +e.target.value / 10; runSuggest(); drawStep2(); };
   $('#btn-resuggest').onclick = () => { S.boxes = S.boxes.filter(b => b.picked); runSuggest(); drawStep2(); toast('문제 칸 ' + S.boxes.filter(b => !b.picked).length + '개를 다시 나눴어요.'); };
+  $('#btn-srv-split').onclick = runSrvSplit;
   $('#btn-unpick-all').onclick = () => { S.boxes = S.boxes.filter(b => !(b.picked && b.custom)); S.boxes.forEach(b => { b.picked = false; }); S.activeId = null; updatePickUI(); drawStep2(); };
   $('#btn-back1').onclick = () => setStep('1');
   $('#btn-to3').onclick = () => enterStep3();

@@ -8,11 +8,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f3f6f5;--card:#fff;--ink:#16302d;--mute:#5b706c;--line:#d5e0dd;--acc:#0f766e;--acc2:#c93a2f}
-@media (prefers-color-scheme:dark){:root{--bg:#111a19;--card:#1a2624;--ink:#e6efed;--mute:#9db1ad;--line:#2b3b38;--acc:#2dd4bf;--acc2:#f87171}}
+:root{--bg:#f3f6f5;--card:#fff;--ink:#16302d;--mute:#5b706c;--line:#d5e0dd;--acc:#0f766e;--acc2:#c93a2f;--bar:#ffffff;--bar-h:52px}
+@media (prefers-color-scheme:dark){:root{--bg:#111a19;--card:#1a2624;--ink:#e6efed;--mute:#9db1ad;--line:#2b3b38;--acc:#2dd4bf;--acc2:#f87171;--bar:#162120}}
 *{box-sizing:border-box}
+html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.6}
-main{max-width:760px;margin:0 auto;padding:48px 16px 64px}
+body.in-app{overflow:hidden}
+
+/* top tab bar */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:stretch;gap:4px;height:calc(var(--bar-h) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));background:var(--bar);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;margin-right:12px;font-weight:700;font-size:16px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.tabs{display:flex;align-items:stretch;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:3px solid transparent;color:var(--mute);font-weight:700;font-size:15px;text-decoration:none;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--acc);border-bottom-color:var(--acc)}
+.tab[data-app="odap-note"][aria-selected="true"]{color:var(--acc2);border-bottom-color:var(--acc2)}
+@media (max-width:480px){.brand{display:none}.tab{padding:0 10px;font-size:14px}}
+
+/* home */
+#home{max-width:760px;margin:0 auto;padding:40px 16px 64px}
 h1{font-size:28px;margin:0 0 6px}
 .lead{color:var(--mute);margin:0 0 32px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
@@ -24,27 +39,89 @@ a.card:hover,a.card:focus-visible{transform:translateY(-2px);box-shadow:0 6px 20
 .go{display:inline-block;margin-top:14px;font-weight:700;color:var(--acc)}
 .card.odap .go{color:var(--acc2)}
 footer{margin-top:40px;color:var(--mute);font-size:13px}
+
+/* app frames: each app stays loaded while you switch tabs */
+.frame{display:block;width:100%;height:calc(100vh - var(--bar-h) - env(safe-area-inset-top,0px));height:calc(100dvh - var(--bar-h) - env(safe-area-inset-top,0px));border:0;background:#fff}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
-<main>
+<header class="bar">
+  <a class="brand" href="#home">my_study</a>
+  <nav class="tabs" role="tablist" aria-label="앱 선택">
+    <a class="tab" role="tab" href="#home" data-app="home" aria-selected="true">🏠 홈</a>
+    <a class="tab" role="tab" href="#word-test" data-app="word-test" aria-selected="false">📝 단어 시험지</a>
+    <a class="tab" role="tab" href="#odap-note" data-app="odap-note" aria-selected="false">📕 오답노트</a>
+  </nav>
+</header>
+
+<main id="home">
   <h1>공부 도구 모음</h1>
   <p class="lead">필요한 도구를 골라 바로 시작하세요. 설치 없이 브라우저에서 동작해요.</p>
   <div class="grid">
-    <a class="card" href="word-test/">
+    <a class="card" href="#word-test">
       <div class="icon">📝</div>
       <h2>영어 단어 시험지 만들기</h2>
       <p>교재 사진에서 영어 단어와 뜻을 읽어 단어 시험지를 만들어요.</p>
       <span class="go">시작하기 →</span>
     </a>
-    <a class="card odap" href="odap-note/">
+    <a class="card odap" href="#odap-note">
       <div class="icon">📕</div>
       <h2>오답노트 만들기</h2>
       <p>시험지 사진에서 틀린 문제만 골라 필기를 지우고 오답노트 PDF로 만들어요.</p>
       <span class="go">시작하기 →</span>
     </a>
   </div>
-  <footer>작업한 내용은 이 브라우저에만 저장돼요.</footer>
+  <footer>작업한 내용은 이 브라우저에만 저장돼요. 위쪽 탭으로 앱을 오가도 하던 작업은 그대로 남아 있어요.</footer>
 </main>
+
+<div id="frames"></div>
+
+<script>
+const APPS = {
+  'word-test': '영어 단어 시험지 만들기',
+  'odap-note': '오답노트 만들기'
+};
+const HOME_TITLE = document.title;
+const frames = {};
+
+// #word-test 또는 #word-test&<앱 주소 뒤에 붙어 있던 ?…#…> 형식을 읽어요.
+function parseHash() {
+  const raw = location.hash.slice(1), i = raw.indexOf('&');
+  const app = i < 0 ? raw : raw.slice(0, i);
+  let extra = '';
+  if (i >= 0) { try { extra = decodeURIComponent(raw.slice(i + 1)); } catch (e) {} }
+  return { app: APPS[app] ? app : 'home', extra };
+}
+
+function frameFor(app, extra) {
+  if (!frames[app]) {
+    const f = document.createElement('iframe');
+    f.className = 'frame';
+    f.title = APPS[app];
+    f.allow = 'camera; clipboard-read; clipboard-write; fullscreen';
+    f.src = app + '/' + extra;
+    document.getElementById('frames').appendChild(f);
+    frames[app] = f;
+  } else if (extra) {
+    frames[app].src = app + '/' + extra;
+  }
+  return frames[app];
+}
+
+function show() {
+  const { app, extra } = parseHash();
+  if (extra) history.replaceState(null, '', '#' + app);
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.app === app)));
+  document.getElementById('home').hidden = app !== 'home';
+  document.body.classList.toggle('in-app', app !== 'home');
+  if (app !== 'home') frameFor(app, extra);
+  for (const k in frames) frames[k].hidden = k !== app;
+  document.title = app === 'home' ? HOME_TITLE : APPS[app] + ' · my_study';
+}
+
+window.addEventListener('hashchange', show);
+show();
+</script>
 </body>
 </html>
