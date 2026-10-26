@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="영어 단어 시험지와 오답노트를 만드는 공부 도구 모음">
+<title>my_study · 공부 도구 모음</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6f5;--card:#fff;--ink:#16302d;--mute:#5b706c;--line:#d5e0dd;--acc:#0f766e;--acc2:#c93a2f}
+@media (prefers-color-scheme:dark){:root{--bg:#111a19;--card:#1a2624;--ink:#e6efed;--mute:#9db1ad;--line:#2b3b38;--acc:#2dd4bf;--acc2:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.6}
+main{max-width:760px;margin:0 auto;padding:48px 16px 64px}
+h1{font-size:28px;margin:0 0 6px}
+.lead{color:var(--mute);margin:0 0 32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+a.card{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+a.card:hover,a.card:focus-visible{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.08);outline:none}
+.icon{font-size:30px}
+.card h2{font-size:19px;margin:8px 0 4px}
+.card p{margin:0;color:var(--mute);font-size:15px}
+.go{display:inline-block;margin-top:14px;font-weight:700;color:var(--acc)}
+.card.odap .go{color:var(--acc2)}
+footer{margin-top:40px;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <h1>공부 도구 모음</h1>
+  <p class="lead">필요한 도구를 골라 바로 시작하세요. 설치 없이 브라우저에서 동작해요.</p>
+  <div class="grid">
+    <a class="card" href="word-test/">
+      <div class="icon">📝</div>
+      <h2>영어 단어 시험지 만들기</h2>
+      <p>교재 사진에서 영어 단어와 뜻을 읽어 단어 시험지를 만들어요.</p>
+      <span class="go">시작하기 →</span>
+    </a>
+    <a class="card odap" href="odap-note/">
+      <div class="icon">📕</div>
+      <h2>오답노트 만들기</h2>
+      <p>시험지 사진에서 틀린 문제만 골라 필기를 지우고 오답노트 PDF로 만들어요.</p>
+      <span class="go">시작하기 →</span>
+    </a>
+  </div>
+  <footer>작업한 내용은 이 브라우저에만 저장돼요.</footer>
+</main>
+</body>
+</html>
