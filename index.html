@@ -115,7 +115,7 @@ function frameFor(app, extra) {
     const f = document.createElement('iframe');
     f.className = 'frame';
     f.title = APPS[app];
-    f.allow = 'camera; clipboard-read; clipboard-write; fullscreen';
+    f.allow = 'camera; clipboard-read; clipboard-write; fullscreen; web-share';
     f.src = app + '/' + extra;
     document.getElementById('frames').appendChild(f);
     frames[app] = f;
