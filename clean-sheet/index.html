@@ -176,17 +176,21 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
           <div class="field">
             <label class="check"><input type="checkbox" id="fx-color" checked>색깔 필기·채점 자국 지우기</label>
             <input type="range" id="fx-color-s" min="0" max="100" value="50" aria-label="색깔 필기 지우기 강도">
-            <p class="mini">빨간 채점 표시, 파란 펜, 형광펜 자국을 지워요. 강도를 올리면 옅은 색까지 지워요.</p>
+            <p class="mini">빨간 채점 표시, 파란 펜, 형광펜 자국을 지워요. 펜 밑에 깔린 인쇄 글씨는 남겨요.</p>
           </div>
           <div class="field">
-            <label class="check"><input type="checkbox" id="fx-pencil">연한 연필 자국 지우기</label>
-            <input type="range" id="fx-pencil-s" min="0" max="100" value="50" aria-label="연필 자국 지우기 강도">
-            <p class="mini">인쇄 글씨보다 연한 자국만 골라 지워요.</p>
+            <label class="check"><input type="checkbox" id="fx-pencil" checked>연필 자국 지우기</label>
+            <input type="range" id="fx-pencil-s" min="0" max="100" value="55" aria-label="연필 자국 지우기 강도">
+            <p class="mini">인쇄 글씨보다 연한 회색 자국을 지워요. 진한 연필이 남으면 강도를 올리고, 작은 인쇄 글씨까지 지워지면 낮추거나 되살리기로 살려요. 인쇄 글씨에 붙어 있는 연필은 남을 수 있어서 '필기만' 지우개로 문질러 주세요.</p>
           </div>
           <div class="field">
-            <div class="field-row"><label for="brush">지우개 크기</label><output id="brush-out" class="val">28</output></div>
+            <span class="lab">손으로 지우기</span>
+            <div class="seg" id="seg-tool" role="group" aria-label="지우개 종류">
+              <button type="button" data-v="soft" aria-pressed="true">필기만</button><button type="button" data-v="all" aria-pressed="false">전부</button><button type="button" data-v="restore" aria-pressed="false">되살리기</button>
+            </div>
+            <p class="mini" id="tool-note"></p>
+            <div class="field-row"><label for="brush">크기</label><output id="brush-out" class="val">28</output></div>
             <input type="range" id="brush" min="8" max="120" value="28">
-            <p class="mini">검은 펜 필기는 사진 위를 문지르면 지워져요.</p>
             <div class="btn-row">
               <button class="btn small" id="btn-undo" type="button"><span class="ico" data-ico="undo"></span>되돌리기</button>
               <button class="btn small danger" id="btn-del-page" type="button"><span class="ico" data-ico="trash"></span>이 쪽 빼기</button>
@@ -217,7 +221,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
               <select id="m-term"><option value="">선택</option><option>1학기 중간</option><option>1학기 기말</option><option>2학기 중간</option><option>2학기 기말</option><option>모의고사</option><option>기타</option></select></div>
           </div>
           <div class="field"><label for="m-note">메모 (선택)</label><input type="text" id="m-note" maxlength="60" autocomplete="off"></div>
-          <p class="mini">완성을 누르면 올린 사진과 깨끗해진 시험지가 서버에 저장되고, 바로 인쇄하거나 PDF로 저장할 수 있어요. 저장된 사진은 관리자만 볼 수 있어요.</p>
+          <p class="mini">완성을 누르면 올린 사진과 깨끗해진 시험지가 서버에 저장되고, 바로 PDF로 저장하거나 카톡 등으로 보내고 인쇄할 수 있어요. 저장된 사진은 관리자만 볼 수 있어요.</p>
           <div class="panel-foot">
             <button class="btn" id="btn-back2" type="button" aria-label="필기 지우기로 돌아가기">←</button>
             <button class="btn primary" id="btn-finish" type="button">완성하기</button>
@@ -231,8 +235,11 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
       <h2 id="done-title">깨끗한 시험지를 만들었어요</h2>
       <p id="done-sub"></p>
       <div class="pages" id="done-pages"></div>
+      <p class="mini" id="save-note"></p>
       <div class="btn-row center">
-        <button class="btn primary" id="btn-print" type="button"><span class="ico" data-ico="print"></span>인쇄 · PDF로 저장</button>
+        <button class="btn primary" id="btn-save-pdf" type="button"><span class="ico" data-ico="download"></span>PDF 저장</button>
+        <button class="btn" id="btn-share" type="button" hidden><span class="ico" data-ico="share"></span>카톡 등으로 보내기</button>
+        <button class="btn" id="btn-print" type="button"><span class="ico" data-ico="print"></span>인쇄</button>
         <button class="btn" id="btn-retry" type="button" hidden>다시 서버에 저장</button>
         <button class="btn" id="btn-new" type="button">다른 시험지 만들기</button>
       </div>
@@ -290,6 +297,8 @@ const ICONS = {
   target:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
   trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
   undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H8"/>',
+  download:'<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>',
+  share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
   print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   check:'<path d="M5 12l5 5 9-10"/>',
   alert:'<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>'
@@ -436,64 +445,103 @@ function detectSkew(cv) {
   return Math.round(best * 10) / 10;
 }
 const hiFromBright = b => 240 - b;
-/* ------------------------------------------------------------------ step 3: clean up */
-/* Whiten every flagged pixel, plus a 2px ring around them. The ring only takes light pixels (soft edges of
-   the stroke), so dark printed glyphs that sit next to a removed mark keep their cores. */
-function eraseMask(d, w, h, m, ring) {
-  const n = w * h; let cur = m;
-  for (let pass = 0; pass < ring; pass++) {
-    const nx = new Uint8Array(cur);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      if (!cur[y * w + x]) continue;
-      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx >= 0 && xx < w) nx[yy * w + xx] = 1; } }
-    }
-    cur = nx;
+/* ------------------------------------------------------------------ 필기 지우기 (인쇄 글씨는 최대한 그대로 남겨요) */
+// 0/1 칸을 사방 r칸까지 넓혀요(가로 한 번, 세로 한 번).
+function dilate(m, w, h, r) {
+  const t = new Uint8Array(m.length), o = new Uint8Array(m.length);
+  for (let y = 0; y < h; y++) {
+    const b = y * w; let last = -1e9;
+    for (let x = 0; x < w; x++) { if (m[b + x]) last = x; if (x - last <= r) t[b + x] = 1; }
+    last = 1e9;
+    for (let x = w - 1; x >= 0; x--) { if (m[b + x]) last = x; if (last - x <= r) t[b + x] = 1; }
   }
-  for (let i = 0, p = 0; i < n; i++, p += 4) {
-    if (!cur[i]) continue;
-    if (!m[i] && ((d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8) < 140) continue;
-    d[p] = 255; d[p + 1] = 255; d[p + 2] = 255;
+  for (let x = 0; x < w; x++) {
+    let last = -1e9;
+    for (let y = 0; y < h; y++) { if (t[y * w + x]) last = y; if (y - last <= r) o[y * w + x] = 1; }
+    last = 1e9;
+    for (let y = h - 1; y >= 0; y--) { if (t[y * w + x]) last = y; if (last - y <= r) o[y * w + x] = 1; }
   }
+  return o;
 }
+const lumOf = (d, p) => (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8;
+/* 색깔 펜·채점 표시: 색이 진한 칸만 고쳐요. 빨간 펜 밑에 깔린 검은 글씨는 R·G·B 가 모두 어두워서
+   '가장 밝은 채널'도 어둡게 남아요. 그 값이 어두우면 진한 글씨로 되살리고(연필 지우기가 글씨로 알아보게), 밝으면(펜만 있으면) 하얗게 만들어요.
+   펜 가장자리의 옅은 색 테두리도 밝은 칸만 지워요. */
 function removeColor(id, s) {
-  const d = id.data, w = id.width, h = id.height, n = w * h, T = Math.round(80 - s * 0.55);
+  const d = id.data, w = id.width, h = id.height, n = w * h, T = Math.round(80 - s * 0.55), keep = Math.round(150 - s * 0.6);
   const m = new Uint8Array(n);
   for (let i = 0, p = 0; i < n; i++, p += 4) {
     const r = d[p], g = d[p + 1], b = d[p + 2];
     const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
-    if (hi - lo > T) m[i] = 1;
+    if (hi - lo <= T) continue;
+    m[i] = 1;
+    if (hi > keep) { d[p] = d[p + 1] = d[p + 2] = 255; }
+    else { const v = Math.round(hi * 0.4); d[p] = d[p + 1] = d[p + 2] = v; }
   }
-  eraseMask(d, w, h, m, 2);
+  const near = dilate(m, w, h, 3), T2 = T * 0.35;
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (m[i] || !near[i]) continue;
+    const r = d[p], g = d[p + 1], b = d[p + 2], v = lumOf(d, p);
+    const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    if ((hi - lo > T2 && v > 150) || v > 175) { d[p] = d[p + 1] = d[p + 2] = 255; }
+  }
 }
-function removePencil(id, s) {
-  const d = id.data, w = id.width, h = id.height, n = w * h, cut = Math.round(150 - s * 0.7), INK = 235;
-  const lum = new Uint8Array(n); for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8;
-  const label = new Int32Array(n), stack = new Int32Array(n), mins = [0]; let nl = 0;
+/* 연필: 이어진 자국(덩어리)마다 가장 진한 칸을 봐요. 실제 시험지 사진에서 인쇄 글씨 덩어리는 가장 진한 칸이
+   대부분 70 아래로 내려가고, 연필은 100 안팎에 머물러요. 그래서 cut 보다 진한 칸이 하나라도 있으면 인쇄로 보고
+   통째로 남기고, 없으면 지워요. 강도를 올리면 cut 이 내려가 더 진한 연필도 지워요.
+   답 칸·표·밑줄 같은 곧고 긴 선이 들어 있는 덩어리는 연해도 남겨요(손으로 쓴 연필은 흔들려서 길게 곧지 않아요). */
+function removePencil(id, s, boost = 0) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, INK = 210, cut = 130 - s * 0.6 - boost;
+  const lum = new Uint8Array(n); for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = lumOf(d, p);
+  const line = new Uint8Array(n), L = Math.max(40, Math.round(Math.max(w, h) * 0.025));
+  for (let y = 0; y < h; y++) for (let x = 0, run = 0; x <= w; x++) {
+    if (x < w && lum[y * w + x] < 200) { run++; continue; }
+    if (run >= L) for (let k = x - run; k < x; k++) line[y * w + k] = 1;
+    run = 0;
+  }
+  for (let x = 0; x < w; x++) for (let y = 0, run = 0; y <= h; y++) {
+    if (y < h && lum[y * w + x] < 200) { run++; continue; }
+    if (run >= L) for (let k = y - run; k < y; k++) line[k * w + x] = 1;
+    run = 0;
+  }
+  const label = new Int32Array(n), stack = new Int32Array(n), keep = [0], mins = [0]; let nl = 0;
   for (let i = 0; i < n; i++) {
     if (lum[i] >= INK || label[i]) continue;
-    nl++; let min = lum[i], sp = 0; stack[sp++] = i; label[i] = nl;
+    nl++; let min = lum[i], ln = 0, sp = 0; stack[sp++] = i; label[i] = nl;
     while (sp) {
-      const j = stack[--sp]; if (lum[j] < min) min = lum[j];
+      const j = stack[--sp]; if (lum[j] < min) min = lum[j]; if (line[j]) ln = 1;
       const x = j % w, y = (j - x) / w;
       for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
         for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (label[k] || lum[k] >= INK) continue; label[k] = nl; stack[sp++] = k; } }
     }
-    mins[nl] = min;
+    keep[nl] = min < cut || ln ? 1 : 0; mins[nl] = min;
   }
+  // 작고 흐린 인쇄 글자(예: '이'의 ㅇ)는 혼자서는 연필처럼 보여요. 바로 옆(글자 한 칸 안)에 확실한 인쇄 글씨가 있으면
+  // 조금 더 연한 것까지 인쇄로 봐요. 시험지의 연필 풀이는 대개 빈 곳에 쓰여 있어서 이 규칙에 잘 안 걸려요.
+  const strong = new Uint8Array(n), R = Math.max(6, Math.round(Math.max(w, h) * 0.005));
+  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && keep[Lb] && mins[Lb] < cut - 15) strong[i] = 1; }
+  const support = dilate(strong, w, h, R);
+  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && !keep[Lb] && mins[Lb] < cut + 35 && support[i]) keep[Lb] = 2; }
   const m = new Uint8Array(n); let any = false;
-  for (let i = 0; i < n; i++) { const L = label[i]; if (L && mins[L] > cut) { m[i] = 1; any = true; } }
-  if (any) eraseMask(d, w, h, m, 2);
+  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && !keep[Lb]) { m[i] = 1; any = true; } }
+  if (!any) return;
+  // 지운 자국 둘레의 옅은 테두리까지 지워요. 진한 칸(인쇄 글씨)은 건드리지 않아요.
+  const near = dilate(m, w, h, 2);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    if (!near[i] || (!m[i] && lum[i] < 160)) continue;
+    d[p] = d[p + 1] = d[p + 2] = 255;
+  }
 }
 
 /* ------------------------------------------------------------------ state */
 // 한 쪽(page)마다 원본, 보정값, 지우기 설정, 지우개 자국을 따로 들고 있어요.
-const S = { step: 'drop', pages: [], active: 0, brush: 28, scale: 1, hover: null, results: null, uploaded: false };
+const S = { step: 'drop', pages: [], active: 0, brush: 28, tool: 'soft', scale: 1, hover: null, results: null, uploaded: false };
 const cur = () => S.pages[S.active];
 
 function newPage(cv, file) {
   const src = shrinkCanvas(cv);
   const p = { src, bg: buildBgGrid(src), quarter: 0, angle: 0, autoFix: true, bright: 0,
-    fx: { color: true, colorS: 50, pencil: false, pencilS: 50 }, strokes: [], corrected: null, geoKey: '', base: null, baseKey: '', final: null, name: file && file.name || '' };
+    fx: { color: true, colorS: 50, pencil: true, pencilS: 55 }, strokes: [], corrected: null, geoKey: '', base: null, baseKey: '', final: null, name: file && file.name || '' };
   ensureCorrected(p);
   const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; p.geoKey = '';
   ensureCorrected(p);
@@ -518,14 +566,44 @@ function ensureBase(p) {
   const b = document.createElement('canvas'); b.width = w; b.height = h; b.getContext('2d').putImageData(id, 0, 0);
   p.base = b; p.baseKey = key;
 }
+// "필기만" 지우개가 쓰는 그림: 체크와 상관없이 색깔·연필 지우기를 모두 한 결과예요.
+function softOf(p) {
+  ensureCorrected(p);
+  const key = [p.geoKey, p.fx.colorS, p.fx.pencilS].join('|');
+  if (p.soft && p.softKey === key) return p.soft;
+  const w = p.corrected.width, h = p.corrected.height, id = p.corrected.getContext('2d').getImageData(0, 0, w, h);
+  removeColor(id, p.fx.colorS); removePencil(id, p.fx.pencilS, 25);  // 문지른 곳은 조금 더 진한 연필까지 지워요
+  const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(id, 0, 0);
+  p.soft = c; p.softKey = key; return c;
+}
+function strokePath(x, s, ox, oy) {
+  x.lineCap = 'round'; x.lineJoin = 'round';
+  if (s.pts.length <= 2) { x.beginPath(); x.arc(s.pts[0] - ox, s.pts[1] - oy, s.size / 2, 0, Math.PI * 2); x.fill(); return; }
+  x.lineWidth = s.size; x.beginPath(); x.moveTo(s.pts[0] - ox, s.pts[1] - oy);
+  for (let i = 2; i < s.pts.length; i += 2) x.lineTo(s.pts[i] - ox, s.pts[i + 1] - oy);
+  x.stroke();
+}
+// 붓 자국 모양대로 src 그림을 오려 붙여요 (되살리기 = 보정한 원본, 필기만 = softOf).
+function pasteStroke(x, s, src) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < s.pts.length; i += 2) { x0 = Math.min(x0, s.pts[i]); x1 = Math.max(x1, s.pts[i]); y0 = Math.min(y0, s.pts[i + 1]); y1 = Math.max(y1, s.pts[i + 1]); }
+  const r = s.size / 2 + 2;
+  x0 = Math.max(0, Math.floor(x0 - r)); y0 = Math.max(0, Math.floor(y0 - r));
+  x1 = Math.min(src.width, Math.ceil(x1 + r)); y1 = Math.min(src.height, Math.ceil(y1 + r));
+  const bw = x1 - x0, bh = y1 - y0; if (bw <= 0 || bh <= 0) return;
+  const t = document.createElement('canvas'); t.width = bw; t.height = bh; const tx = t.getContext('2d');
+  tx.strokeStyle = '#000'; tx.fillStyle = '#000'; strokePath(tx, s, x0, y0);
+  tx.globalCompositeOperation = 'source-in'; tx.drawImage(src, x0, y0, bw, bh, 0, 0, bw, bh);
+  x.drawImage(t, x0, y0);
+}
 function renderFinal(p) {
   ensureBase(p);
   if (!p.final || p.final.width !== p.base.width || p.final.height !== p.base.height) { p.final = document.createElement('canvas'); p.final.width = p.base.width; p.final.height = p.base.height; }
   const x = p.final.getContext('2d'); x.clearRect(0, 0, p.final.width, p.final.height); x.drawImage(p.base, 0, 0);
-  x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round';
   for (const s of p.strokes) {
-    if (s.pts.length <= 2) { x.beginPath(); x.arc(s.pts[0], s.pts[1], s.size / 2, 0, Math.PI * 2); x.fill(); continue; }
-    x.lineWidth = s.size; x.beginPath(); x.moveTo(s.pts[0], s.pts[1]); for (let i = 2; i < s.pts.length; i += 2) x.lineTo(s.pts[i], s.pts[i + 1]); x.stroke();
+    if (s.mode === 'restore') pasteStroke(x, s, p.corrected);
+    else if (s.mode === 'soft') pasteStroke(x, s, softOf(p));
+    else { x.strokeStyle = '#fff'; x.fillStyle = '#fff'; strokePath(x, s, 0, 0); }
   }
 }
 
@@ -576,7 +654,7 @@ function draw() {
   renderFinal(p);
   const cv = $('#cv'); const { ctx, scale, cw, ch } = fitCanvas(cv, p.final.width, p.final.height, $('#stage'));
   S.scale = scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(p.final, 0, 0, cw, ch);
-  if (S.hover) { ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(S.hover.x * scale, S.hover.y * scale, Math.max(3, S.brush / 2), 0, Math.PI * 2); ctx.stroke(); }
+  if (S.hover) { ctx.strokeStyle = S.tool === 'restore' ? tok('--focus') : tok('--accent'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(S.hover.x * scale, S.hover.y * scale, Math.max(3, S.brush / 2), 0, Math.PI * 2); ctx.stroke(); }
 }
 function drawThumb(c, p) {
   const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
@@ -612,7 +690,7 @@ function bindStage() {
   cv.style.cursor = 'crosshair';
   cv.addEventListener('pointerdown', e => {
     if (e.button > 0) return; const p = cur(); if (!p) return; cv.setPointerCapture(e.pointerId);
-    const pt = toImg(e); st = { size: S.brush / S.scale, pts: [pt.x, pt.y] }; p.strokes.push(st); S.hover = pt; draw(); e.preventDefault();
+    const pt = toImg(e); st = { size: S.brush / S.scale, pts: [pt.x, pt.y], mode: S.tool }; p.strokes.push(st); S.hover = pt; draw(); e.preventDefault();
   });
   const move = raf(() => draw());
   cv.addEventListener('pointermove', e => { const pt = toImg(e); S.hover = pt; if (st) st.pts.push(pt.x, pt.y); move(); });
@@ -641,9 +719,57 @@ async function buildResults() {
     renderFinal(p);
     const clean = await blobOf(p.final, 'image/jpeg', 0.92);
     const orig = await blobOf(p.src, 'image/jpeg', 0.88);
-    out.push({ clean, orig, url: URL.createObjectURL(clean) });
+    out.push({ clean, orig, url: URL.createObjectURL(clean), w: p.final.width, h: p.final.height });
   }
   return out;
+}
+// A4 한 쪽에 사진 한 장씩, 여백 8mm 안에 비율을 지켜 넣은 PDF (따로 불러오는 프로그램 없이 직접 만들어요).
+async function buildPdf(results) {
+  const enc = new TextEncoder(), parts = [], offs = []; let pos = 0;
+  const add = dd => { const u = typeof dd === 'string' ? enc.encode(dd) : dd; parts.push(u); pos += u.length; };
+  add('%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n');
+  const n = results.length, kids = results.map((_, i) => (3 + i * 3) + ' 0 R').join(' ');
+  offs[1] = pos; add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  offs[2] = pos; add('2 0 obj\n<< /Type /Pages /Kids [' + kids + '] /Count ' + n + ' >>\nendobj\n');
+  const W = 595.28, H = 841.89, M = 22.68;
+  for (let i = 0; i < n; i++) {
+    const r = results[i], jpg = new Uint8Array(await r.clean.arrayBuffer());
+    const sc = Math.min((W - 2 * M) / r.w, (H - 2 * M) / r.h), dw = r.w * sc, dh = r.h * sc;
+    const dx = (W - dw) / 2, dy = H - M - dh;
+    const po = 3 + i * 3, co = po + 1, io = po + 2, content = 'q ' + dw.toFixed(2) + ' 0 0 ' + dh.toFixed(2) + ' ' + dx.toFixed(2) + ' ' + dy.toFixed(2) + ' cm /Im0 Do Q';
+    offs[po] = pos; add(po + ' 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 ' + io + ' 0 R >> >> /Contents ' + co + ' 0 R >>\nendobj\n');
+    offs[co] = pos; add(co + ' 0 obj\n<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream\nendobj\n');
+    offs[io] = pos; add(io + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + r.w + ' /Height ' + r.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); add(jpg); add('\nendstream\nendobj\n');
+  }
+  const total = 2 + n * 3, xr = pos; let xs = 'xref\n0 ' + (total + 1) + '\n0000000000 65535 f \n';
+  for (let i = 1; i <= total; i++) xs += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  add(xs); add('trailer\n<< /Size ' + (total + 1) + ' /Root 1 0 R >>\nstartxref\n' + xr + '\n%%EOF\n');
+  return new Blob(parts, { type: 'application/pdf' });
+}
+function pdfName(m) {
+  const base = [m.school, m.grade, m.subject, m.year, m.term].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  return (base || '깨끗한 시험지') + '.pdf';
+}
+// 저장·보내기 버튼은 누르는 순간 바로 열려야 해서(브라우저 규칙), PDF 파일은 완성할 때 미리 만들어 둬요.
+async function savePdf() {
+  const f = S.pdfFile; if (!f) return;
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await window.showSaveFilePicker({ suggestedName: f.name, types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] });
+      const w = await h.createWritable(); await w.write(f); await w.close();
+      toast('고른 곳에 저장했어요.'); return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  $('#save-note').textContent = '"' + f.name + '" 을(를) 다운로드 폴더에 저장했어요. 컴퓨터는 다운로드 폴더, 아이폰은 파일 앱의 다운로드, 안드로이드는 내 파일의 다운로드에서 찾을 수 있어요.';
+}
+async function sharePdf() {
+  const f = S.pdfFile; if (!f) return;
+  try { await navigator.share({ files: [f], title: f.name.replace(/\.pdf$/, '') }); }
+  catch (e) { if (!e || e.name !== 'AbortError') toast('보내기 화면을 열지 못했어요. PDF 저장을 눌러 주세요.'); }
 }
 async function upload() {
   const c = srvConf();
@@ -670,12 +796,12 @@ async function tryUpload() {
   try {
     await upload(); S.uploaded = true; hideToast();
     $('#done-mark').className = 'done-mark'; $('#done-mark').innerHTML = ico('check');
-    $('#done-sub').textContent = S.results.length + '쪽을 서버에 저장했어요. 이제 인쇄하거나 PDF로 저장하세요.';
+    $('#done-sub').textContent = S.results.length + '쪽을 서버에 저장했어요. PDF로 저장하거나 보내고, 인쇄할 수 있어요.';
     btn.hidden = true;
   } catch (e) {
     hideToast();
     $('#done-mark').className = 'done-mark warn'; $('#done-mark').innerHTML = ico('alert');
-    $('#done-sub').textContent = upErrMsg(e) + ' 인쇄는 지금 바로 할 수 있어요.';
+    $('#done-sub').textContent = upErrMsg(e) + ' PDF 저장과 인쇄는 지금 바로 할 수 있어요.';
     btn.hidden = false;
   } finally { btn.disabled = false; }
 }
@@ -686,6 +812,9 @@ async function finish() {
     try { localStorage.setItem('cs_meta', JSON.stringify(S.meta)); } catch (e) {}
     if (S.results) S.results.forEach(r => URL.revokeObjectURL(r.url));
     S.results = await buildResults();
+    S.pdfFile = new File([await buildPdf(S.results)], pdfName(S.meta), { type: 'application/pdf' });
+    let canShare = false; try { canShare = !!(navigator.canShare && navigator.canShare({ files: [S.pdfFile] })); } catch (e) {}
+    $('#btn-share').hidden = !canShare; $('#save-note').textContent = '';
     const dp = $('#done-pages'); dp.innerHTML = '';
     const pa = $('#print-area'); pa.innerHTML = '';
     S.results.forEach(r => {
@@ -802,6 +931,14 @@ function bind() {
   $('#fx-color-s').oninput = e => { const v = +e.target.value; slow(() => { cur().fx.colorS = v; redraw(); }); };
   $('#fx-pencil').onchange = e => { cur().fx.pencil = e.target.checked; redraw(); };
   $('#fx-pencil-s').oninput = e => { const v = +e.target.value; slow(() => { cur().fx.pencilS = v; redraw(); }); };
+  const TOOL_NOTE = {
+    soft: '문지른 곳에서 연필·색깔 자국만 지우고 진한 인쇄 글씨는 남겨요.',
+    all: '문지른 곳을 하얗게 지워요. 검은 펜 필기처럼 인쇄 글씨만큼 진한 것에 써요.',
+    restore: '너무 많이 지워진 곳을 문지르면 원래 사진으로 되살아나요.'
+  };
+  const setTool = v => { S.tool = v; $$('#seg-tool button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v))); $('#tool-note').textContent = TOOL_NOTE[v]; };
+  $$('#seg-tool button').forEach(b => { b.onclick = () => setTool(b.dataset.v); });
+  setTool(S.tool);
   $('#brush').oninput = e => { S.brush = +e.target.value; $('#brush-out').textContent = e.target.value; };
   $('#btn-undo').onclick = () => { const p = cur(); if (p && p.strokes.length) { p.strokes.pop(); redraw(); } };
   $('#btn-del-page').onclick = () => {
@@ -814,6 +951,8 @@ function bind() {
   $('#btn-back2').onclick = () => setStep('2');
   $('#btn-finish').onclick = finish;
   $('#btn-print').onclick = () => window.print();
+  $('#btn-save-pdf').onclick = savePdf;
+  $('#btn-share').onclick = sharePdf;
   $('#btn-retry').onclick = tryUpload;
   $('#btn-new').onclick = reset;
   bindStage();
