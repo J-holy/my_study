@@ -104,7 +104,8 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
 .entry-imgs a{flex:0 0 auto;display:grid;gap:4px;justify-items:center;font-size:12px;color:var(--mute);text-decoration:none}
 .entry-imgs img{height:130px;width:auto;min-width:60px;background:var(--hover);border:1px solid var(--line);border-radius:4px}
 .empty{padding:32px 0;text-align:center;color:var(--mute)}
-.foot{margin-top:28px;display:flex;justify-content:center}
+.foot{margin-top:28px;display:flex;justify-content:center;align-items:center;gap:16px}
+.foot .ver{color:var(--mute);font-size:12px}
 
 .toast{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(16px);background:var(--btn);color:var(--btn-fg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:calc(100vw - 32px);z-index:40;text-align:center}
 .toast.show{opacity:1;transform:none}
@@ -254,7 +255,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
       </div>
     </div>
 
-    <div class="foot"><button class="btn link" id="btn-admin" type="button">관리자</button></div>
+    <div class="foot"><span class="ver">버전 v1.06 · 2026-10-27</span><button class="btn link" id="btn-admin" type="button">관리자</button></div>
   </main>
 
   <main id="view-admin" hidden>
@@ -782,6 +783,41 @@ function removePencil(id, s, boost = 0, colorMask = null) {
   }
   const m = new Uint8Array(n); let any = false;
   for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && erase[Lb]) { m[i] = 1; any = true; } }
+  // 인쇄 글자 위에 겹쳐 쓴 연필(보기 번호 위 체크, 표 테두리에 닿은 낙서): 글자·선과 붙어 한 덩어리라 위에서 남겨진 경우예요.
+  // 곧은 선을 떼어 낸 뒤 조각마다 글자 한 줄 높이에서 잉크가 가장 많은 띠를 글자로 보고,
+  // 띠 밖으로 뻗은 부분이 띠 안 글자보다 확실히 옅으면 그 부분만 지워요. 괄호·근호처럼 같은 진하기로 긴 인쇄 기호와, 색 자국 밑에서 되살린 인쇄는 남아요.
+  const cand = new Uint8Array(nl + 1); let anyCand = false;
+  for (let c = 1; c <= nl; c++) if (!erase[c] && (y1[c] - y0[c] >= 1.5 * pageH || cLn[c])) { cand[c] = 1; anyCand = true; }
+  if (anyCand) {
+    const lineNear = dilate(line, w, h, 1), tag = new Uint8Array(n), win = Math.max(4, Math.round(1.3 * pageH));
+    for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && cand[Lb] && !lineNear[i] && lum[i] < INK) tag[i] = 1; }
+    for (let i = 0; i < n; i++) {
+      if (tag[i] !== 1) continue;
+      let sp = 0, ax = w, bx = 0, ay = h, by = 0; const px = []; stack[sp++] = i; tag[i] = 2;
+      while (sp) { const j = stack[--sp], x = j % w, y = (j - x) / w; px.push(j); if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y;
+        for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (tag[k] === 1) { tag[k] = 2; stack[sp++] = k; } } } }
+      const ph = by - ay + 1, pw = bx - ax + 1;
+      // 곧고 가는 조각은 짧은 표 칸막이·밑줄 같은 인쇄 선일 수 있어서 남겨요.
+      if (Math.min(pw, ph) <= 0.2 * Math.max(pw, ph)) continue;
+      // 표·상자 선에 닿아 있던 작은 조각: 인쇄 글줄 밖에 있고 이 쪽 인쇄보다 확실히 옅으면 연필이에요.
+      if (ph <= win * 1.15) {
+        if (!cLn[label[i]] || Math.max(ph, bx - ax + 1) < 0.6 * pageH || band[((ay + by) >> 1) * w + ((ax + bx) >> 1)]) continue;
+        let pm = 255; for (const j of px) if (lum[j] < pm) pm = lum[j];
+        if (pm > pageInk + 40) { for (const j of px) if (!(colorMask && colorMask[j] === 2)) m[j] = 1; any = true; }
+        continue;
+      }
+      // 가는 세로 기호(괄호, 대괄호)는 끝이 옅게 찍히기도 해서 건드리지 않아요.
+      if (bx - ax < 0.8 * pageH) continue;
+      const rows = new Int32Array(ph); for (const j of px) rows[((j / w) | 0) - ay]++;
+      let best = 0, bestY = 0, run = 0;
+      for (let y = 0; y < ph; y++) { run += rows[y] - (y >= win ? rows[y - win] : 0); if (y >= win - 1 && run > best) { best = run; bestY = y - win + 1; } }
+      let inMin = 255, outMin = 255;
+      for (const j of px) { const y = ((j / w) | 0) - ay; if (y >= bestY && y < bestY + win) { if (lum[j] < inMin) inMin = lum[j]; } else if (lum[j] < outMin && !(colorMask && colorMask[j] === 2)) outMin = lum[j]; }
+      if (outMin <= inMin + 40 || outMin <= pageInk + 30) continue;
+      for (const j of px) { const y = ((j / w) | 0) - ay; if ((y < bestY || y >= bestY + win) && !(colorMask && colorMask[j] === 2)) { m[j] = 1; any = true; } }
+    }
+  }
   if (!any) return;
   // 지운 자국 둘레의 옅은 테두리까지 지워요. 진한 칸(인쇄 글씨)은 건드리지 않아요.
   const near = dilate(m, w, h, 2);
