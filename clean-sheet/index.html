@@ -255,7 +255,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
       </div>
     </div>
 
-    <div class="foot"><span class="ver">버전 v1.06 · 2026-10-27</span><button class="btn link" id="btn-admin" type="button">관리자</button></div>
+    <div class="foot"><span class="ver">버전 v1.07 · 2026-10-27</span><button class="btn link" id="btn-admin" type="button">관리자</button></div>
   </main>
 
   <main id="view-admin" hidden>
@@ -644,19 +644,20 @@ function removePencil(id, s, boost = 0, colorMask = null) {
   }
   const around = minFilter(lum, w, h, Math.max(8, Math.round(Math.max(w, h) * 0.017)));
   const label = new Int32Array(n), stack = new Int32Array(n);
-  const cMin = [0], cReg = [0], cLn = [0], cRb = [0], x0 = [0], x1 = [0], y0 = [0], y1 = [0], cA = [0], cB = [0]; let nl = 0;
+  const cMin = [0], cReg = [0], cLn = [0], cRb = [0], x0 = [0], x1 = [0], y0 = [0], y1 = [0], cA = [0], cB = [0], cR = [0], cN = [0]; let nl = 0;
   for (let i = 0; i < n; i++) {
     if (lum[i] >= INK || label[i]) continue;
-    nl++; let min = lum[i], reg = around[i], ln = 0, rb = 0, sp = 0, ax = w, bx = 0, ay = h, by = 0, ar = 0, bd = 0; stack[sp++] = i; label[i] = nl;
+    nl++; let min = lum[i], reg = around[i], ln = 0, rb = 0, sp = 0, ax = w, bx = 0, ay = h, by = 0, ar = 0, bd = 0, ls = 0, lc = 0; stack[sp++] = i; label[i] = nl;
     while (sp) {
       const j = stack[--sp]; if (lum[j] < min) min = lum[j]; if (around[j] < reg) reg = around[j]; if (line[j]) ln = 1; if (colorMask && colorMask[j] === 2) rb = 1;
       const x = j % w, y = (j - x) / w;
       if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y;
+      if (lum[j] < 170) { ls += lum[j]; lc++; }
       if (lum[j] < 150) { ar++; if (x === 0 || y === 0 || x === w - 1 || y === h - 1 || lum[j - 1] >= 150 || lum[j + 1] >= 150 || lum[j - w] >= 150 || lum[j + w] >= 150) bd++; }
       for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
         for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (label[k] || lum[k] >= INK) continue; label[k] = nl; stack[sp++] = k; } }
     }
-    cMin.push(min); cReg.push(reg); cLn.push(ln); cRb.push(rb); x0.push(ax); x1.push(bx + 1); y0.push(ay); y1.push(by + 1); cA.push(ar); cB.push(bd);
+    cMin.push(min); cReg.push(reg); cLn.push(ln); cRb.push(rb); x0.push(ax); x1.push(bx + 1); y0.push(ay); y1.push(by + 1); cA.push(ar); cB.push(bd); cR.push(lc ? ls / lc - min : 0); cN.push(lc);
   }
   // 인쇄 글씨는 같은 크기의 글자가 한 줄로 촘촘히 늘어서 있어요. 그런 줄에 든 조각을 찾아요.
   const sc = Math.max(w, h) / 2400, hMin = 6 * sc, hMax = 60 * sc, wMax = 80 * sc;
@@ -678,6 +679,10 @@ function removePencil(id, s, boost = 0, colorMask = null) {
   // 줄의 진하기는 글자들 가운데값으로 봐요. 인쇄 잉크는 한결같이 새까맣고, 연필 줄은 그보다 옅어요.
   const med = new Float32Array(nl + 1);
   for (const [g, v] of mins) { v.sort((p, q) => p - q); med[g] = v[v.length >> 1]; }
+  // 줄의 결: 인쇄는 새까만 속과 흐린 테두리가 있어 글자 안 밝기 폭이 넓고, 연필은 고르게 회색이라 폭이 좁아요.
+  const rngs = new Map(), tex = new Float32Array(nl + 1);
+  for (const c of ids) { if (cA[c] < 12 * sc * sc) continue; const g = find(c); if (!rngs.has(g)) rngs.set(g, []); rngs.get(g).push(cR[c]); }
+  for (const [g, v] of rngs) { v.sort((p, q) => p - q); tex[g] = v[v.length >> 1]; }
   // 사진마다 인쇄 진하기가 달라요. 긴 줄(12글자 이상)은 거의 언제나 인쇄라서 그 진하기에 맞춰 기준을 옮겨요.
   const longMed = []; for (const [g, v] of mins) if (v.length >= 12) longMed.push(med[g]);
   longMed.sort((p, q) => p - q);
@@ -698,7 +703,10 @@ function removePencil(id, s, boost = 0, colorMask = null) {
     Math.max(a[0] - r[2], r[0] - a[2]) < 150 * sc && Math.max(a[1] - r[3], r[1] - a[3]) < 80 * sc); };
   const darkG = new Map();
   const dark = c => { const g = find(c); let v = darkG.get(g);
-    if (v === undefined) { v = hLow[g] > 1.25 * pageH && cnt[g] >= 6 && cnt[g] < 15 ? med[g] <= cut && besideAnchor(g) : med[g] <= (cnt[g] >= 12 ? cut + 25 : cut); darkG.set(g, v); }
+    if (v === undefined) { v = hLow[g] > 1.25 * pageH && cnt[g] >= 6 && cnt[g] < 15 ? med[g] <= cut && besideAnchor(g) : med[g] <= (cnt[g] >= 12 ? cut + 25 : cut);
+      // 진하기로는 인쇄 같아도 결이 연필(옅고 고른 회색)이면 연필 줄이에요.
+      if (v && tex[g] && med[g] - pageInk - tex[g] > 0) v = false;
+      darkG.set(g, v); }
     return v; };
   // inRow: 2 = 인쇄 줄, 1 = 연필 줄
   const inRow = new Uint8Array(nl + 1);
@@ -755,8 +763,8 @@ function removePencil(id, s, boost = 0, colorMask = null) {
   const erase = new Uint8Array(nl + 1);
   const besidePrint = c => { const r = 6 * pageH;
     for (let k = 1; k <= nl; k++) {
-      if (k === c || cMin[k] > pageInk + 15 || x1[k] < x0[c] - r || x0[k] > x1[c] + r) continue;
-      const kh = y1[k] - y0[k]; if (kh < 0.4 * pageH || kh > 2 * pageH) continue;
+      if (k === c || cMin[k] > pageInk + 30 || cR[k] < 50 || x1[k] < x0[c] - r || x0[k] > x1[c] + r) continue;
+      const kh = y1[k] - y0[k]; if (kh < 0.4 * pageH || kh > 2 * pageH || !nearRow[((y0[k] + y1[k]) >> 1) * w + ((x0[k] + x1[k]) >> 1)]) continue;
       if (Math.min(y1[k], y1[c]) - Math.max(y0[k], y0[c]) > 0.5 * kh) return true;
     }
     return false; };
@@ -766,7 +774,11 @@ function removePencil(id, s, boost = 0, colorMask = null) {
     if (cLn[c] && (near || Math.max(x1[c] - x0[c], y1[c] - y0[c]) > 300 * sc)) continue;
     const loose = cA[c] && lpar[c] && looseOk.get(lfind(c)) && near && hLow[find(c)] <= 1.25 * pageH;
     if (cMin[c] > lightCut || (cReg[c] > regionCut && !loose)) { erase[c] = 1; continue; }
-    if (inRow[c] === 2 || (!inRow[c] && band[cy * w + cx])) continue;
+    if (inRow[c] === 2) continue;
+    // 혼자 떨어진 조각도 결을 봐요. 이 쪽 인쇄보다 옅으면서 글자 안 밝기 폭이 좁으면 인쇄 줄 옆이라도 연필이에요(옅게 찍히는 가는 가로획은 빼요).
+    const ch = y1[c] - y0[c], cw = x1[c] - x0[c];
+    if (cN[c] >= 12 * sc * sc && ch > 0.3 * cw && ch >= 0.5 * pageH && cMin[c] - pageInk - Math.max(cR[c], tex[find(c)]) > 20) { erase[c] = 1; continue; }
+    if (!inRow[c] && band[cy * w + cx]) continue;
     // 연필 줄. 다만 색 자국 밑에서 되살린 인쇄는 원래보다 옅어서 줄 진하기로 판단하지 않아요.
     // 줄 안에서 혼자 훨씬 진하거나 이 쪽 인쇄 글씨만큼 진한 조각은 연필 풀이 옆에 붙은 인쇄 글씨일 수 있어서 따로 봐요.
     if (inRow[c] === 1 && !cRb[c] && cMin[c] > Math.max(med[find(c)] - 35, pageInk + 12)) { erase[c] = 1; continue; }
@@ -774,11 +786,11 @@ function removePencil(id, s, boost = 0, colorMask = null) {
     // 보기 번호(① 6)처럼 혼자 떨어진 인쇄 글씨는 가늘고 인쇄 줄 가까이에 있어서 남아요.
     const W = 2 * cA[c] / Math.max(1, cB[c]);
     // 굵은 획은 글자 크기일 때만 펜 글씨로 봐요. 그래프의 점처럼 작거나, 점·눈금이 이어진 큰 덩어리는 남겨요.
-    const ch = y1[c] - y0[c], cw = x1[c] - x0[c], penSized = ch >= 0.9 * pageH && ch <= 3 * pageH && cw <= 3 * pageH;
+    const penSized = ch >= 0.9 * pageH && ch <= 3 * pageH && cw <= 3 * pageH;
     const wsc = Math.max(0.6, sc), bold = (W >= 3.4 * wsc && penSized) || (W >= 4.5 * wsc && ch >= 0.9 * pageH && ch <= 5 * pageH);
     // 인쇄 줄에 들지 않고 인쇄 글자보다 확실히 크면서 인쇄 잉크만큼 진하지 않으면 손으로 쓴 숫자예요.
-    // 동그란 보기 번호(②)나, 진한 인쇄 글자와 같은 높이에 나란히 있는 괄호 등은 인쇄로 봐요.
-    const big = inRow[c] !== 2 && ch >= 1.2 * pageH && ch <= 4 * pageH && cw <= 4 * pageH && cMin[c] > pageInk + 15 && !(cw >= 0.8 * ch && cw <= 1.25 * ch) && !besidePrint(c);
+    // 보기 번호(② 19)나 괄호처럼 인쇄 글자(진하고 결이 인쇄인 글자)와 같은 높이에 나란히 있으면 인쇄로 봐요.
+    const big = inRow[c] !== 2 && ch >= 1.2 * pageH && ch <= 4 * pageH && cw <= 4 * pageH && cMin[c] > pageInk + 15 && !besidePrint(c);
     if (bold || big || !near) erase[c] = 1;
   }
   const m = new Uint8Array(n); let any = false;
@@ -790,6 +802,8 @@ function removePencil(id, s, boost = 0, colorMask = null) {
   for (let c = 1; c <= nl; c++) if (!erase[c] && (y1[c] - y0[c] >= 1.5 * pageH || cLn[c])) { cand[c] = 1; anyCand = true; }
   if (anyCand) {
     const lineNear = dilate(line, w, h, 1), tag = new Uint8Array(n), win = Math.max(4, Math.round(1.3 * pageH));
+    // 남은 글자 크기 조각(인쇄)의 자리. 덩어리 옆 같은 높이에 인쇄 글자가 있으면 그 높이는 글자 줄이라 지우지 않아요.
+    const kb = []; for (let c = 1; c <= nl; c++) { const hh = y1[c] - y0[c]; if (!erase[c] && !cand[c] && hh >= 0.4 * pageH && hh <= 2 * pageH && cMin[c] <= pageInk + 60) kb.push(c); }
     for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && cand[Lb] && !lineNear[i] && lum[i] < INK) tag[i] = 1; }
     for (let i = 0; i < n; i++) {
       if (tag[i] !== 1) continue;
@@ -812,10 +826,22 @@ function removePencil(id, s, boost = 0, colorMask = null) {
       const rows = new Int32Array(ph); for (const j of px) rows[((j / w) | 0) - ay]++;
       let best = 0, bestY = 0, run = 0;
       for (let y = 0; y < ph; y++) { run += rows[y] - (y >= win ? rows[y - win] : 0); if (y >= win - 1 && run > best) { best = run; bestY = y - win + 1; } }
-      let inMin = 255, outMin = 255;
-      for (const j of px) { const y = ((j / w) | 0) - ay; if (y >= bestY && y < bestY + win) { if (lum[j] < inMin) inMin = lum[j]; } else if (lum[j] < outMin && !(colorMask && colorMask[j] === 2)) outMin = lum[j]; }
-      if (outMin <= inMin + 40 || outMin <= pageInk + 30) continue;
-      for (const j of px) { const y = ((j / w) | 0) - ay; if ((y < bestY || y >= bestY + win) && !(colorMask && colorMask[j] === 2)) { m[j] = 1; any = true; } }
+      let inMin = 255, outMin = 255, oS = 0, oN = 0;
+      for (const j of px) { const y = ((j / w) | 0) - ay; if (y >= bestY && y < bestY + win) { if (lum[j] < inMin) inMin = lum[j]; }
+        else if (!(colorMask && colorMask[j] === 2)) { if (lum[j] < outMin) outMin = lum[j]; if (lum[j] < 170) { oS += lum[j]; oN++; } } }
+      // 띠 밖 부분이 옅거나, 진하더라도 연필 결(밝기 폭이 좁은 회색)이면 지워요.
+      const outFlat = oN >= 12 * sc * sc && oS / oN - outMin < 45 && outMin > inMin + 20;
+      // 보기 번호·글자에 붙여 그은 체크는 진하고 결도 인쇄 같아요. 글자 몇 개 크기의 덩어리에서 띠 위아래로 길게 뻗은 획이면 체크로 봐요.
+      // 도장처럼 속이 꽉 찬 덩어리나, 띠 밖이 곧은 세로선(상자 테두리)뿐인 조각은 체크가 아니에요.
+      let oxa = w, oxb = -1; for (const j of px) { const y = ((j / w) | 0) - ay; if (y < bestY || y >= bestY + win) { const x = j % w; if (x < oxa) oxa = x; if (x > oxb) oxb = x; } }
+      const reach = Math.max(bestY, ph - bestY - win), check = ph <= 5 * pageH && pw <= 6 * pageH && reach >= 0.8 * pageH && oN >= 0.25 * px.length &&
+        px.length < 0.35 * pw * ph && oxb - oxa >= 0.5 * pageH;
+      if (!outFlat && !check && (outMin <= inMin + 40 || outMin <= pageInk + 30)) continue;
+      const keepY = new Uint8Array(ph); for (let y = bestY; y < bestY + win && y < ph; y++) keepY[y] = 1;
+      const mx = 8 * pageH, my = Math.round(0.15 * pageH);
+      for (const k of kb) { if (x1[k] < ax - mx || x0[k] > bx + mx || y1[k] < ay || y0[k] > by) continue;
+        for (let y = Math.max(0, y0[k] - ay - my); y < Math.min(ph, y1[k] - ay + my); y++) keepY[y] = 1; }
+      for (const j of px) { const y = ((j / w) | 0) - ay; if (!keepY[y] && !(colorMask && colorMask[j] === 2)) { m[j] = 1; any = true; } }
     }
   }
   if (!any) return;
