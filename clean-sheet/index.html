@@ -104,7 +104,8 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
 .entry-imgs a{flex:0 0 auto;display:grid;gap:4px;justify-items:center;font-size:12px;color:var(--mute);text-decoration:none}
 .entry-imgs img{height:130px;width:auto;min-width:60px;background:var(--hover);border:1px solid var(--line);border-radius:4px}
 .empty{padding:32px 0;text-align:center;color:var(--mute)}
-.foot{margin-top:28px;display:flex;justify-content:center}
+.foot{margin-top:28px;display:flex;justify-content:center;align-items:center;gap:16px}
+.foot .ver{color:var(--mute);font-size:12px}
 
 .toast{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(16px);background:var(--btn);color:var(--btn-fg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:calc(100vw - 32px);z-index:40;text-align:center}
 .toast.show{opacity:1;transform:none}
@@ -168,6 +169,15 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
             </div>
           </div>
           <div class="field">
+            <div class="field-row"><label>문서처럼 펴기</label></div>
+            <p class="mini">비스듬히 찍힌 시험지를 종이 네 모서리에 맞춰 반듯한 직사각형으로 펴요. 네 모서리가 다 보이게 찍으면 저절로 찾고, 못 찾았거나 어긋나면 직접 맞춰 주세요.</p>
+            <div class="btn-row">
+              <button class="btn small" id="btn-corner" type="button"><span class="ico" data-ico="corners"></span><span id="btn-corner-t">모서리 맞추기</span></button>
+              <button class="btn small" id="btn-corner-clear" type="button">모서리 풀기</button>
+            </div>
+            <p class="mini" id="corner-note" hidden>사진 위의 네 점을 끌어서 종이 네 모서리에 맞춘 뒤 '맞춤 끝내기'를 누르세요.</p>
+          </div>
+          <div class="field">
             <label class="check"><input type="checkbox" id="auto-fix" checked>밝기·그림자 보정</label>
             <div class="field-row"><label for="bright">밝기</label><output id="bright-out" class="val">0</output></div>
             <input type="range" id="bright" min="-50" max="50" step="1" value="0">
@@ -180,8 +190,8 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
           </div>
           <div class="field">
             <label class="check"><input type="checkbox" id="fx-pencil" checked>연필 자국 지우기</label>
-            <input type="range" id="fx-pencil-s" min="0" max="100" value="55" aria-label="연필 자국 지우기 강도">
-            <p class="mini">인쇄 글씨보다 연한 회색 자국을 지워요. 진한 연필이 남으면 강도를 올리고, 작은 인쇄 글씨까지 지워지면 낮추거나 되살리기로 살려요. 인쇄 글씨에 붙어 있는 연필은 남을 수 있어서 '필기만' 지우개로 문질러 주세요.</p>
+            <input type="range" id="fx-pencil-s" min="0" max="100" value="50" aria-label="연필 자국 지우기 강도">
+            <p class="mini">인쇄 글씨가 아닌 손글씨(연필, 진한 연필, 검은 펜 숫자)를 지워요. 인쇄 글자와 같은 줄에 붙여 쓴 것은 남을 수 있어서 '필기만' 지우개로 문질러 주세요. 인쇄 글씨까지 지워진 곳은 되살리기로 살려요.</p>
           </div>
           <div class="field">
             <span class="lab">손으로 지우기</span>
@@ -245,7 +255,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0}
       </div>
     </div>
 
-    <div class="foot"><button class="btn link" id="btn-admin" type="button">관리자</button></div>
+    <div class="foot"><span class="ver">버전 v1.06 · 2026-10-27</span><button class="btn link" id="btn-admin" type="button">관리자</button></div>
   </main>
 
   <main id="view-admin" hidden>
@@ -301,6 +311,7 @@ const ICONS = {
   share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
   print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   check:'<path d="M5 12l5 5 9-10"/>',
+  corners:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
   alert:'<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>'
 };
 const svg = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>';
@@ -339,12 +350,12 @@ function loadImgEl(file) {
     im.src = u;
   });
 }
-async function fileToCanvas(file) {
+async function fileToCanvas(file, maxSide = MAX_SIDE) {
   let bmp;
   try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
   catch (e) { bmp = await loadImgEl(file); }
   const bw = bmp.naturalWidth || bmp.width, bh = bmp.naturalHeight || bmp.height;
-  const sc = Math.min(1, MAX_SIDE / Math.max(bw, bh));
+  const sc = Math.min(1, maxSide / Math.max(bw, bh));
   const cv = document.createElement('canvas'); cv.width = Math.round(bw * sc); cv.height = Math.round(bh * sc);
   const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
   x.imageSmoothingQuality = 'high'; x.drawImage(bmp, 0, 0, cv.width, cv.height);
@@ -430,7 +441,8 @@ function detectSkew(cv) {
   const t = document.createElement('canvas'); t.width = w; t.height = h; const tx = t.getContext('2d'); tx.drawImage(cv, 0, 0, w, h);
   const d = tx.getImageData(0, 0, w, h).data; const pts = [];
   const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
-  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) { const p = (y * w + x) * 4; const l = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8; if (l < 130) pts.push(x, y); }
+  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) { const p = (y * w + x) * 4; const l = (d[p] * 77 + d[p + 1] * 151 + d[p + 2] * 28) >> 8;
+    if (l < 130 && Math.max(d[p], d[p + 1], d[p + 2]) - Math.min(d[p], d[p + 1], d[p + 2]) < 50) pts.push(x, y); }  // 색깔 자국(채점 동그라미, 책상)은 빼고 재요
   if (pts.length < 800) return 0;
   const N = pts.length / 2, stride = Math.max(1, Math.floor(N / 30000));
   const score = deg => {
@@ -445,9 +457,111 @@ function detectSkew(cv) {
   return Math.round(best * 10) / 10;
 }
 const hiFromBright = b => 240 - b;
+
+/* ------------------------------------------------------------------ 문서처럼 펴기 */
+// 사진 안에 종이 네 모서리가 보이면(책상이 둘러 보이면) 그 네 점을 찾아요. 비율 좌표 [x, y] 4개 (왼위, 오위, 오아래, 왼아래).
+function detectQuad(cv) {
+  const sc = Math.min(1, 480 / Math.max(cv.width, cv.height)), w = Math.round(cv.width * sc), h = Math.round(cv.height * sc);
+  const t = document.createElement('canvas'); t.width = w; t.height = h; const tx = t.getContext('2d'); tx.drawImage(cv, 0, 0, w, h);
+  const d = tx.getImageData(0, 0, w, h).data, n = w * h, lum = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = lumOf(d, p);
+  const sorted = Uint8Array.from(lum).sort(), bright = sorted[Math.floor(n * 0.7)];
+  // 종이: 밝고 색이 거의 없는 칸. 그림자를 생각해 밝기 기준은 사진에서 밝은 쪽의 65% 로 잡아요.
+  const m = new Uint8Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const hi = Math.max(d[p], d[p + 1], d[p + 2]), lo = Math.min(d[p], d[p + 1], d[p + 2]);
+    m[i] = lum[i] > bright * 0.65 && hi - lo < 45 ? 1 : 0;
+  }
+  // 글씨 구멍을 메우고 가장 큰 덩어리만 남겨요.
+  const closed = dilate(m, w, h, 3);
+  const lab = new Int32Array(n), st = new Int32Array(n); let best = 0, bestN = 0, nl = 0;
+  for (let i = 0; i < n; i++) {
+    if (!closed[i] || lab[i]) continue; nl++; let sp = 0, cnt = 0; st[sp++] = i; lab[i] = nl;
+    while (sp) { const j = st[--sp]; cnt++; const x = j % w;
+      if (x > 0 && closed[j - 1] && !lab[j - 1]) { lab[j - 1] = nl; st[sp++] = j - 1; }
+      if (x < w - 1 && closed[j + 1] && !lab[j + 1]) { lab[j + 1] = nl; st[sp++] = j + 1; }
+      if (j >= w && closed[j - w] && !lab[j - w]) { lab[j - w] = nl; st[sp++] = j - w; }
+      if (j < n - w && closed[j + w] && !lab[j + w]) { lab[j + w] = nl; st[sp++] = j + w; } }
+    if (cnt > bestN) { bestN = cnt; best = nl; }
+  }
+  if (bestN < n * 0.3 || bestN > n * 0.97) return null;
+  // 네 방향으로 가장 멀리 나간 점이 모서리예요.
+  const dirs = [[-1, -1], [1, -1], [1, 1], [-1, 1]], pts = dirs.map(() => null), sc2 = dirs.map(() => -Infinity);
+  for (let i = 0; i < n; i++) { if (lab[i] !== best) continue; const x = i % w, y = (i - x) / w;
+    for (let k = 0; k < 4; k++) { const v = dirs[k][0] * x / w + dirs[k][1] * y / h; if (v > sc2[k]) { sc2[k] = v; pts[k] = [x, y]; } } }
+  // 모서리가 사진 테두리에 붙어 있으면(종이가 사진 밖으로 나감) 그 모서리는 믿을 수 없어요. 셋 이상 안쪽에 있어야 써요.
+  const edge = 0.015, inside = pts.filter(([x, y]) => x > w * edge && x < w * (1 - edge) && y > h * edge && y < h * (1 - edge)).length;
+  if (inside < 3) return null;
+  // 가장 먼 점만으로는 모서리가 그림자에 먹혀 어긋나기 쉬워요. 네 변의 가운데 부분 테두리 점들로 직선을 맞추고, 이웃한 두 직선이 만나는 곳을 모서리로 써요.
+  const bd = [];
+  for (let i = 0; i < n; i++) { if (lab[i] !== best) continue; const x = i % w, y = (i - x) / w;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) continue;
+    if (lab[i - 1] !== best || lab[i + 1] !== best || lab[i - w] !== best || lab[i + w] !== best) bd.push(x, y); }
+  const lines = [];
+  for (let k = 0; k < 4; k++) {
+    const [ax, ay] = pts[k], [bx, by] = pts[(k + 1) % 4], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, L = Math.sqrt(L2);
+    let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, cn = 0;
+    for (let i = 0; i < bd.length; i += 2) { const px = bd[i] - ax, py = bd[i + 1] - ay, t = (px * dx + py * dy) / L2;
+      if (t < 0.15 || t > 0.85 || Math.abs(px * dy - py * dx) / L > Math.max(w, h) * 0.04) continue;
+      sx += bd[i]; sy += bd[i + 1]; sxx += bd[i] * bd[i]; syy += bd[i + 1] * bd[i + 1]; sxy += bd[i] * bd[i + 1]; cn++; }
+    if (cn < 20) { lines.push(null); continue; }
+    const mx = sx / cn, my = sy / cn, cxx = sxx / cn - mx * mx, cyy = syy / cn - my * my, cxy = sxy / cn - mx * my;
+    const ang = 0.5 * Math.atan2(2 * cxy, cxx - cyy); lines.push([mx, my, Math.cos(ang), Math.sin(ang)]);
+  }
+  const meet = (l1, l2) => { if (!l1 || !l2) return null; const den = l1[2] * l2[3] - l1[3] * l2[2]; if (Math.abs(den) < 0.2) return null;
+    const t = ((l2[0] - l1[0]) * l2[3] - (l2[1] - l1[1]) * l2[2]) / den; return [l1[0] + l1[2] * t, l1[1] + l1[3] * t]; };
+  const ref = pts.map((pt, k) => { const m = meet(lines[(k + 3) % 4], lines[k]);
+    return m && Math.hypot(m[0] - pt[0], m[1] - pt[1]) < Math.max(w, h) * 0.08 ? [clamp(m[0], 0, w), clamp(m[1], 0, h)] : pt; });
+  // 메운 만큼(3칸) 바깥으로 부풀었으니 가운데 쪽으로 조금 당겨서 책상이 섞이지 않게 해요.
+  const mcx = ref.reduce((a, t) => a + t[0], 0) / 4, mcy = ref.reduce((a, t) => a + t[1], 0) / 4;
+  const q = ref.map(([x, y]) => { const dx = mcx - x, dy = mcy - y, L = Math.hypot(dx, dy) || 1; return [(x + dx / L * 5) / w, (y + dy / L * 5) / h]; });
+  const area = Math.abs(q.reduce((a, [x, y], i) => { const [x2, y2] = q[(i + 1) % 4]; return a + x * y2 - x2 * y; }, 0)) / 2;
+  if (area < 0.3) return null;
+  // 거의 사진 전체이면 펼 필요가 없어요.
+  if (q.every(([x, y], i) => Math.abs(x - [0, 1, 1, 0][i]) < 0.03 && Math.abs(y - [0, 0, 1, 1][i]) < 0.03)) return null;
+  return q;
+}
+// 네 점 → 직사각형 (원근 보정). 직사각형의 (u, v) 가 사진의 어디인지 알려 주는 변환을 풀어요.
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [X, Y] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -X * x, -X * y]); b.push(X);
+    A.push([0, 0, 0, x, y, 1, -Y * x, -Y * y]); b.push(Y);
+  }
+  for (let c = 0; c < 8; c++) {
+    let piv = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    [A[c], A[piv]] = [A[piv], A[c]]; [b[c], b[piv]] = [b[piv], b[c]];
+    for (let r = 0; r < 8; r++) { if (r === c) continue; const f = A[r][c] / A[c][c]; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; b[r] -= f * b[c]; }
+  }
+  return b.map((v, i) => v / A[i][i]);
+}
+// 종이만 잘라 반듯한 직사각형으로 펴요. 글씨 굵기가 다른 사진과 같도록 긴 변을 MAX_SIDE 에 맞춰요.
+function warpQuad(cv, quad) {
+  const sw = cv.width, sh = cv.height, P = quad.map(([x, y]) => [x * sw, y * sh]);
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let W = Math.max(dist(P[0], P[1]), dist(P[3], P[2])), H = Math.max(dist(P[0], P[3]), dist(P[1], P[2]));
+  const k = Math.min(1.5, MAX_SIDE / Math.max(W, H)); W = Math.round(W * k); H = Math.round(H * k);
+  const m = homography([[0, 0], [W, 0], [W, H], [0, H]], P);
+  const s = cv.getContext('2d').getImageData(0, 0, sw, sh).data;
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ox = out.getContext('2d'), id = ox.createImageData(W, H), o = id.data;
+  for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) {
+    const z = m[6] * u + m[7] * v + 1, x = (m[0] * u + m[1] * v + m[2]) / z - 0.5, y = (m[3] * u + m[4] * v + m[5]) / z - 0.5;
+    const q = (v * W + u) * 4;
+    if (x < 0 || y < 0 || x >= sw - 1 || y >= sh - 1) { o[q] = o[q + 1] = o[q + 2] = o[q + 3] = 255; continue; }
+    const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, p0 = (y0 * sw + x0) * 4, p1 = p0 + sw * 4;
+    for (let c = 0; c < 3; c++) o[q + c] = (s[p0 + c] * (1 - fx) + s[p0 + 4 + c] * fx) * (1 - fy) + (s[p1 + c] * (1 - fx) + s[p1 + 4 + c] * fx) * fy;
+    o[q + 3] = 255;
+  }
+  ox.putImageData(id, 0, 0); return out;
+}
+// 90° 돌린 화면의 비율 좌표 ↔ 원래 사진의 비율 좌표
+const quarterPt = (pt, q) => { let [x, y] = pt; for (let i = 0; i < ((q % 4) + 4) % 4; i++) [x, y] = [1 - y, x]; return [x, y]; };
+const unquarterPt = (pt, q) => { let [x, y] = pt; for (let i = 0; i < ((q % 4) + 4) % 4; i++) [x, y] = [y, 1 - x]; return [x, y]; };
 /* ------------------------------------------------------------------ 필기 지우기 (인쇄 글씨는 최대한 그대로 남겨요) */
 // 0/1 칸을 사방 r칸까지 넓혀요(가로 한 번, 세로 한 번).
-function dilate(m, w, h, r) {
+function dilate(m, w, h, r, ry = r) {
   const t = new Uint8Array(m.length), o = new Uint8Array(m.length);
   for (let y = 0; y < h; y++) {
     const b = y * w; let last = -1e9;
@@ -457,9 +571,9 @@ function dilate(m, w, h, r) {
   }
   for (let x = 0; x < w; x++) {
     let last = -1e9;
-    for (let y = 0; y < h; y++) { if (t[y * w + x]) last = y; if (y - last <= r) o[y * w + x] = 1; }
+    for (let y = 0; y < h; y++) { if (t[y * w + x]) last = y; if (y - last <= ry) o[y * w + x] = 1; }
     last = 1e9;
-    for (let y = h - 1; y >= 0; y--) { if (t[y * w + x]) last = y; if (last - y <= r) o[y * w + x] = 1; }
+    for (let y = h - 1; y >= 0; y--) { if (t[y * w + x]) last = y; if (last - y <= ry) o[y * w + x] = 1; }
   }
   return o;
 }
@@ -476,7 +590,7 @@ function removeColor(id, s) {
     if (hi - lo <= T) continue;
     m[i] = 1;
     if (hi > keep) { d[p] = d[p + 1] = d[p + 2] = 255; }
-    else { const v = Math.round(hi * 0.4); d[p] = d[p + 1] = d[p + 2] = v; }
+    else { const v = Math.round(hi * 0.4); d[p] = d[p + 1] = d[p + 2] = v; m[i] = 2; }
   }
   const near = dilate(m, w, h, 3), T2 = T * 0.35;
   for (let i = 0, p = 0; i < n; i++, p += 4) {
@@ -485,18 +599,42 @@ function removeColor(id, s) {
     const hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
     if ((hi - lo > T2 && v > 150) || v > 175) { d[p] = d[p + 1] = d[p + 2] = 255; }
   }
+  // 색 자국 밑에서 되살린 인쇄 칸(2). 연필 지우기가 이 칸을 연한 연필로 오해하지 않게 넘겨줘요.
+  return m;
 }
-/* 연필: 이어진 자국(덩어리)마다 가장 진한 칸을 봐요. 실제 시험지 사진에서 인쇄 글씨 덩어리는 가장 진한 칸이
-   대부분 70 아래로 내려가고, 연필은 100 안팎에 머물러요. 그래서 cut 보다 진한 칸이 하나라도 있으면 인쇄로 보고
-   통째로 남기고, 없으면 지워요. 강도를 올리면 cut 이 내려가 더 진한 연필도 지워요.
-   답 칸·표·밑줄 같은 곧고 긴 선이 들어 있는 덩어리는 연해도 남겨요(손으로 쓴 연필은 흔들려서 길게 곧지 않아요). */
-function removePencil(id, s, boost = 0) {
-  const d = id.data, w = id.width, h = id.height, n = w * h, INK = 210, cut = 130 - s * 0.6 - boost;
+// 사방 r칸 안의 가장 작은 값 (가로 한 번, 세로 한 번. 줄마다 덱으로 훑어서 r 이 커도 빨라요).
+function minFilter(src, w, h, r) {
+  const tmp = new Uint8Array(src.length), out = new Uint8Array(src.length), q = new Int32Array(Math.max(w, h) + 1);
+  const pass = (get, set, len, lines) => {
+    for (let l = 0; l < lines; l++) {
+      let qh = 0, qt = 0;
+      for (let i = 0; i < len + r; i++) {
+        if (i < len) { const v = get(l, i); while (qt > qh && get(l, q[qt - 1]) >= v) qt--; q[qt++] = i; }
+        const c = i - r; if (c < 0) continue;
+        while (q[qh] < c - r) qh++;
+        set(l, c, get(l, q[qh]));
+      }
+    }
+  };
+  pass((y, x) => src[y * w + x], (y, x, v) => { tmp[y * w + x] = v; }, w, h);
+  pass((x, y) => tmp[y * w + x], (x, y, v) => { out[y * w + x] = v; }, h, w);
+  return out;
+}
+/* 연필: 보내 주신 실제 시험지 사진 5장으로 맞췄어요. 진하기 하나만으로는 진하게 쓴 연필·펜과 인쇄가 겹쳐서,
+   이어진 자국(덩어리)마다 몇 가지를 함께 봐요.
+   1) 둘레(글자 몇 칸 거리) 안에 아주 진한 획이 없거나, 덩어리 자체가 아주 옅으면 연필이에요.
+   2) 인쇄 글씨는 같은 크기의 글자가 한 줄로 촘촘히 늘어서고, 그 줄의 진하기는 사진의 인쇄 진하기와 같아요.
+      그런 줄과 그 띠 안의 작은 조각(=, -, 쉼표)은 남겨요. 줄은 이루지만 옅거나 글자가 인쇄보다 큰 줄은 손글씨로 봐요.
+   3) 줄에 들지 않은 조각은 인쇄 줄·표 테두리 가까이에 있고 가늘 때만 남겨요(보기 번호, 표 안 숫자).
+   답 칸·표·밑줄 같은 곧고 긴 선은 인쇄 가까이에 있으면 남겨요. 강도를 올리면 기준이 내려가 더 진한 연필도 지워요. */
+function removePencil(id, s, boost = 0, colorMask = null) {
+  const d = id.data, w = id.width, h = id.height, n = w * h, INK = 210;
+  const regionCut = 100 - s * 0.6 - boost, lightCut = 140 - s * 0.3 - boost, rowCut = 105 - s * 0.45 - boost * 0.5;
   const lum = new Uint8Array(n); for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = lumOf(d, p);
   const line = new Uint8Array(n), L = Math.max(40, Math.round(Math.max(w, h) * 0.025));
   for (let y = 0; y < h; y++) for (let x = 0, run = 0; x <= w; x++) {
     if (x < w && lum[y * w + x] < 200) { run++; continue; }
-    if (run >= L) for (let k = x - run; k < x; k++) line[y * w + k] = 1;
+    if (run >= L) for (let k = x - run; k < x; k++) line[y * w + k] = run >= 200 * Math.max(w, h) / 2400 ? 3 : 1;  // 3 = 표·상자 테두리만큼 긴 가로선
     run = 0;
   }
   for (let x = 0; x < w; x++) for (let y = 0, run = 0; y <= h; y++) {
@@ -504,26 +642,182 @@ function removePencil(id, s, boost = 0) {
     if (run >= L) for (let k = y - run; k < y; k++) line[k * w + x] = 1;
     run = 0;
   }
-  const label = new Int32Array(n), stack = new Int32Array(n), keep = [0], mins = [0]; let nl = 0;
+  const around = minFilter(lum, w, h, Math.max(8, Math.round(Math.max(w, h) * 0.017)));
+  const label = new Int32Array(n), stack = new Int32Array(n);
+  const cMin = [0], cReg = [0], cLn = [0], cRb = [0], x0 = [0], x1 = [0], y0 = [0], y1 = [0], cA = [0], cB = [0]; let nl = 0;
   for (let i = 0; i < n; i++) {
     if (lum[i] >= INK || label[i]) continue;
-    nl++; let min = lum[i], ln = 0, sp = 0; stack[sp++] = i; label[i] = nl;
+    nl++; let min = lum[i], reg = around[i], ln = 0, rb = 0, sp = 0, ax = w, bx = 0, ay = h, by = 0, ar = 0, bd = 0; stack[sp++] = i; label[i] = nl;
     while (sp) {
-      const j = stack[--sp]; if (lum[j] < min) min = lum[j]; if (line[j]) ln = 1;
+      const j = stack[--sp]; if (lum[j] < min) min = lum[j]; if (around[j] < reg) reg = around[j]; if (line[j]) ln = 1; if (colorMask && colorMask[j] === 2) rb = 1;
       const x = j % w, y = (j - x) / w;
+      if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y;
+      if (lum[j] < 150) { ar++; if (x === 0 || y === 0 || x === w - 1 || y === h - 1 || lum[j - 1] >= 150 || lum[j + 1] >= 150 || lum[j - w] >= 150 || lum[j + w] >= 150) bd++; }
       for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
         for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (label[k] || lum[k] >= INK) continue; label[k] = nl; stack[sp++] = k; } }
     }
-    keep[nl] = min < cut || ln ? 1 : 0; mins[nl] = min;
+    cMin.push(min); cReg.push(reg); cLn.push(ln); cRb.push(rb); x0.push(ax); x1.push(bx + 1); y0.push(ay); y1.push(by + 1); cA.push(ar); cB.push(bd);
   }
-  // 작고 흐린 인쇄 글자(예: '이'의 ㅇ)는 혼자서는 연필처럼 보여요. 바로 옆(글자 한 칸 안)에 확실한 인쇄 글씨가 있으면
-  // 조금 더 연한 것까지 인쇄로 봐요. 시험지의 연필 풀이는 대개 빈 곳에 쓰여 있어서 이 규칙에 잘 안 걸려요.
-  const strong = new Uint8Array(n), R = Math.max(6, Math.round(Math.max(w, h) * 0.005));
-  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && keep[Lb] && mins[Lb] < cut - 15) strong[i] = 1; }
-  const support = dilate(strong, w, h, R);
-  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && !keep[Lb] && mins[Lb] < cut + 35 && support[i]) keep[Lb] = 2; }
+  // 인쇄 글씨는 같은 크기의 글자가 한 줄로 촘촘히 늘어서 있어요. 그런 줄에 든 조각을 찾아요.
+  const sc = Math.max(w, h) / 2400, hMin = 6 * sc, hMax = 60 * sc, wMax = 80 * sc;
+  const ids = [], par = new Int32Array(nl + 1);
+  for (let c = 1; c <= nl; c++) { par[c] = c; const ch = y1[c] - y0[c]; if (ch >= hMin && ch <= hMax && x1[c] - x0[c] <= wMax && cA[c]) ids.push(c); }
+  const find = c => { while (par[c] !== c) { par[c] = par[par[c]]; c = par[c]; } return c; };
+  ids.sort((a, b) => x0[a] - x0[b]);
+  for (let a = 0; a < ids.length; a++) {
+    const p = ids[a], hp = y1[p] - y0[p];
+    for (let b = a + 1; b < ids.length; b++) {
+      const q = ids[b], hq = y1[q] - y0[q], gap = x0[q] - x1[p];
+      if (gap > 100 * sc) break;
+      if (gap > 1.2 * Math.max(hp, hq) || hp > 2.5 * hq || hq > 2.5 * hp) continue;
+      if (Math.min(y1[p], y1[q]) - Math.max(y0[p], y0[q]) > 0.5 * Math.min(hp, hq)) par[find(p)] = find(q);
+    }
+  }
+  const cnt = new Int32Array(nl + 1), mins = new Map();
+  for (const c of ids) { const g = find(c); cnt[g]++; if (!mins.has(g)) mins.set(g, []); mins.get(g).push(cMin[c]); }
+  // 줄의 진하기는 글자들 가운데값으로 봐요. 인쇄 잉크는 한결같이 새까맣고, 연필 줄은 그보다 옅어요.
+  const med = new Float32Array(nl + 1);
+  for (const [g, v] of mins) { v.sort((p, q) => p - q); med[g] = v[v.length >> 1]; }
+  // 사진마다 인쇄 진하기가 달라요. 긴 줄(12글자 이상)은 거의 언제나 인쇄라서 그 진하기에 맞춰 기준을 옮겨요.
+  const longMed = []; for (const [g, v] of mins) if (v.length >= 12) longMed.push(med[g]);
+  longMed.sort((p, q) => p - q);
+  const pageInk = longMed.length ? longMed[longMed.length >> 1] : 40, cut = Math.max(rowCut, pageInk + rowCut - 60);
+  // 줄마다 글자 높이(가운데값)와 차지한 칸. 손글씨는 대개 인쇄 글자보다 커요.
+  const hts = new Map(), gb = new Map();
+  for (const c of ids) { const g = find(c); if (!hts.has(g)) { hts.set(g, []); gb.set(g, [x0[c], y0[c], x1[c], y1[c]]); }
+    hts.get(g).push(y1[c] - y0[c]); const r = gb.get(g); r[0] = Math.min(r[0], x0[c]); r[1] = Math.min(r[1], y0[c]); r[2] = Math.max(r[2], x1[c]); r[3] = Math.max(r[3], y1[c]); }
+  // hLow: 줄에서 작은 쪽(아래 1/4) 글자 높이. 괄호·분수처럼 큰 기호가 섞여도 흔들리지 않아요.
+  const hMed = new Float32Array(nl + 1), hLow = new Float32Array(nl + 1);
+  for (const [g, v] of hts) { v.sort((p, q) => p - q); hMed[g] = v[v.length >> 1]; hLow[g] = v[v.length >> 2]; }
+  const longH = []; for (const [g, v] of mins) if (v.length >= 12 && med[g] <= cut + 25) longH.push(hMed[g]);
+  longH.sort((p, q) => p - q);
+  const pageH = longH.length ? longH[longH.length >> 1] : 22 * sc;
+  const anchors = []; for (const [g, v] of mins) if (v.length >= 15 && med[g] <= cut + 25) anchors.push(gb.get(g));
+  // 인쇄보다 큰 글자 줄은 긴 인쇄 줄 바로 옆(제목·머리글)일 때만 인쇄로 봐요. 진하게 쓴 손글씨 풀이가 여기서 걸러져요.
+  const besideAnchor = g => { const r = gb.get(g); return anchors.some(a => a !== r &&
+    Math.max(a[0] - r[2], r[0] - a[2]) < 150 * sc && Math.max(a[1] - r[3], r[1] - a[3]) < 80 * sc); };
+  const darkG = new Map();
+  const dark = c => { const g = find(c); let v = darkG.get(g);
+    if (v === undefined) { v = hLow[g] > 1.25 * pageH && cnt[g] >= 6 && cnt[g] < 15 ? med[g] <= cut && besideAnchor(g) : med[g] <= (cnt[g] >= 12 ? cut + 25 : cut); darkG.set(g, v); }
+    return v; };
+  // inRow: 2 = 인쇄 줄, 1 = 연필 줄
+  const inRow = new Uint8Array(nl + 1);
+  for (const c of ids) { const k = cnt[find(c)]; if (k >= 6 && dark(c)) inRow[c] = 2; else if (k >= 4 && !dark(c)) inRow[c] = 1; }
+  // 같은 글줄에서 인쇄 줄 바로 옆에 이어지는 조금 옅은 줄(조명 탓)은 인쇄로 봐요.
+  {
+    const kind = new Map(); for (const c of ids) if (inRow[c]) kind.set(find(c), inRow[c]);
+    const printBoxes = [...kind].filter(([, k]) => k === 2).map(([g]) => [gb.get(g), hMed[g]]);
+    const lift = new Set();
+    for (const [g, k] of kind) {
+      if (k !== 1 || med[g] > cut + 25) continue;
+      const r = gb.get(g);
+      if (printBoxes.some(([a, ha]) => Math.min(a[3], r[3]) - Math.max(a[1], r[1]) > 0.5 * Math.min(a[3] - a[1], r[3] - r[1]) &&
+        Math.max(a[0] - r[2], r[0] - a[2]) < 3 * Math.max(ha, hMed[g]))) lift.add(g);
+    }
+    for (const c of ids) if (lift.has(find(c))) inRow[c] = 2;
+  }
+  // 짧은 진한 줄(4~5글자)은 인쇄 줄 가까이에 있을 때만 인쇄로 보고, 그 줄이 다시 이웃 줄을 받쳐 줘요.
+  let nearRow, band;
+  for (let round = 0; round < 4; round++) {
+    // 긴 가로선(표·상자 테두리)도 인쇄로 보고, 그 둘레의 보기 번호·표 안 숫자를 받쳐 줘요.
+    const rowPx = new Uint8Array(n); for (let i = 0; i < n; i++) if ((label[i] && inRow[label[i]] === 2 && lum[i] < 150) || line[i] === 3) rowPx[i] = 1;
+    nearRow = dilate(rowPx, w, h, Math.round(320 * sc), Math.round(170 * sc));
+    let added = 0;
+    for (const c of ids) if (!inRow[c] && cnt[find(c)] >= 4 && dark(c) && nearRow[((y0[c] + y1[c]) >> 1) * w + ((x0[c] + x1[c]) >> 1)]) { inRow[c] = 2; added++; }
+    if (!added) break;
+  }
+  {
+    // 인쇄 줄이 차지한 띠(양옆으로 조금 더). 그 안의 작은 조각(=, -, 쉼표)과 띄어 쓴 낱말도 인쇄로 봐요.
+    const box = new Map();
+    for (const c of ids) if (inRow[c] === 2) { const g = find(c), r = box.get(g);
+      if (!r) box.set(g, [x0[c], y0[c], x1[c], y1[c]]); else { r[0] = Math.min(r[0], x0[c]); r[1] = Math.min(r[1], y0[c]); r[2] = Math.max(r[2], x1[c]); r[3] = Math.max(r[3], y1[c]); } }
+    band = new Uint8Array(n);
+    for (const r of box.values()) { const m2 = Math.round((r[3] - r[1]) * 0.3), mx = (r[3] - r[1]) * 4;
+      for (let y = Math.max(0, r[1] - m2); y < Math.min(h, r[3] + m2); y++) band.fill(1, y * w + Math.max(0, r[0] - mx), y * w + Math.min(w, r[2] + mx)); }
+  }
+  // 보기 줄(⑤ ㄷ, ㄹ, ㅁ)처럼 띄엄띄엄 놓인 인쇄 글자: 높이·윗선·아랫선이 꼭 맞게 한 줄에 3개 이상 있고
+  // 인쇄 줄 가까이 있으면, 주변에 진한 획이 없어도 옅다는 이유만으로 지우지 않아요.
+  const lpar = new Int32Array(nl + 1); for (const c of ids) lpar[c] = c;
+  const lfind = c => { while (lpar[c] !== c) { lpar[c] = lpar[lpar[c]]; c = lpar[c]; } return c; };
+  for (let a = 0; a < ids.length; a++) {
+    const p = ids[a], hp = y1[p] - y0[p];
+    for (let b = a + 1; b < ids.length; b++) {
+      const q = ids[b], hq = y1[q] - y0[q], gap = x0[q] - x1[p];
+      if (gap > 200 * sc) break;
+      if (gap < 0 || gap > 3 * Math.max(hp, hq) || hp > 1.4 * hq || hq > 1.4 * hp) continue;
+      const tol = 0.25 * Math.max(hp, hq);
+      if (Math.abs(y0[p] - y0[q]) <= tol && Math.abs(y1[p] - y1[q]) <= tol) lpar[lfind(p)] = lfind(q);
+    }
+  }
+  const lcnt = new Int32Array(nl + 1), lmin = new Map();
+  for (const c of ids) { const g = lfind(c); lcnt[g]++; if (!lmin.has(g)) lmin.set(g, []); lmin.get(g).push(cMin[c]); }
+  const looseOk = new Map(); for (const [g, v] of lmin) { v.sort((p, q) => p - q); looseOk.set(g, v.length >= 3 && v[v.length >> 1] <= cut); }
+  const erase = new Uint8Array(nl + 1);
+  const besidePrint = c => { const r = 6 * pageH;
+    for (let k = 1; k <= nl; k++) {
+      if (k === c || cMin[k] > pageInk + 15 || x1[k] < x0[c] - r || x0[k] > x1[c] + r) continue;
+      const kh = y1[k] - y0[k]; if (kh < 0.4 * pageH || kh > 2 * pageH) continue;
+      if (Math.min(y1[k], y1[c]) - Math.max(y0[k], y0[c]) > 0.5 * kh) return true;
+    }
+    return false; };
+  for (let c = 1; c <= nl; c++) {
+    const cx = (x0[c] + x1[c]) >> 1, cy = (y0[c] + y1[c]) >> 1, near = nearRow[cy * w + cx];
+    // 곧은 선(표 테두리, 분수 막대)은 인쇄 줄 가까이 있거나 아주 길 때만 남겨요.
+    if (cLn[c] && (near || Math.max(x1[c] - x0[c], y1[c] - y0[c]) > 300 * sc)) continue;
+    const loose = cA[c] && lpar[c] && looseOk.get(lfind(c)) && near && hLow[find(c)] <= 1.25 * pageH;
+    if (cMin[c] > lightCut || (cReg[c] > regionCut && !loose)) { erase[c] = 1; continue; }
+    if (inRow[c] === 2 || (!inRow[c] && band[cy * w + cx])) continue;
+    // 연필 줄. 다만 색 자국 밑에서 되살린 인쇄는 원래보다 옅어서 줄 진하기로 판단하지 않아요.
+    // 줄 안에서 혼자 훨씬 진하거나 이 쪽 인쇄 글씨만큼 진한 조각은 연필 풀이 옆에 붙은 인쇄 글씨일 수 있어서 따로 봐요.
+    if (inRow[c] === 1 && !cRb[c] && cMin[c] > Math.max(med[find(c)] - 35, pageInk + 12)) { erase[c] = 1; continue; }
+    // 줄에 들지 않은 조각: 굵은 펜 글씨이거나 인쇄 줄에서 멀리 떨어져 있으면 필기로 봐요.
+    // 보기 번호(① 6)처럼 혼자 떨어진 인쇄 글씨는 가늘고 인쇄 줄 가까이에 있어서 남아요.
+    const W = 2 * cA[c] / Math.max(1, cB[c]);
+    // 굵은 획은 글자 크기일 때만 펜 글씨로 봐요. 그래프의 점처럼 작거나, 점·눈금이 이어진 큰 덩어리는 남겨요.
+    const ch = y1[c] - y0[c], cw = x1[c] - x0[c], penSized = ch >= 0.9 * pageH && ch <= 3 * pageH && cw <= 3 * pageH;
+    const wsc = Math.max(0.6, sc), bold = (W >= 3.4 * wsc && penSized) || (W >= 4.5 * wsc && ch >= 0.9 * pageH && ch <= 5 * pageH);
+    // 인쇄 줄에 들지 않고 인쇄 글자보다 확실히 크면서 인쇄 잉크만큼 진하지 않으면 손으로 쓴 숫자예요.
+    // 동그란 보기 번호(②)나, 진한 인쇄 글자와 같은 높이에 나란히 있는 괄호 등은 인쇄로 봐요.
+    const big = inRow[c] !== 2 && ch >= 1.2 * pageH && ch <= 4 * pageH && cw <= 4 * pageH && cMin[c] > pageInk + 15 && !(cw >= 0.8 * ch && cw <= 1.25 * ch) && !besidePrint(c);
+    if (bold || big || !near) erase[c] = 1;
+  }
   const m = new Uint8Array(n); let any = false;
-  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && !keep[Lb]) { m[i] = 1; any = true; } }
+  for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && erase[Lb]) { m[i] = 1; any = true; } }
+  // 인쇄 글자 위에 겹쳐 쓴 연필(보기 번호 위 체크, 표 테두리에 닿은 낙서): 글자·선과 붙어 한 덩어리라 위에서 남겨진 경우예요.
+  // 곧은 선을 떼어 낸 뒤 조각마다 글자 한 줄 높이에서 잉크가 가장 많은 띠를 글자로 보고,
+  // 띠 밖으로 뻗은 부분이 띠 안 글자보다 확실히 옅으면 그 부분만 지워요. 괄호·근호처럼 같은 진하기로 긴 인쇄 기호와, 색 자국 밑에서 되살린 인쇄는 남아요.
+  const cand = new Uint8Array(nl + 1); let anyCand = false;
+  for (let c = 1; c <= nl; c++) if (!erase[c] && (y1[c] - y0[c] >= 1.5 * pageH || cLn[c])) { cand[c] = 1; anyCand = true; }
+  if (anyCand) {
+    const lineNear = dilate(line, w, h, 1), tag = new Uint8Array(n), win = Math.max(4, Math.round(1.3 * pageH));
+    for (let i = 0; i < n; i++) { const Lb = label[i]; if (Lb && cand[Lb] && !lineNear[i] && lum[i] < INK) tag[i] = 1; }
+    for (let i = 0; i < n; i++) {
+      if (tag[i] !== 1) continue;
+      let sp = 0, ax = w, bx = 0, ay = h, by = 0; const px = []; stack[sp++] = i; tag[i] = 2;
+      while (sp) { const j = stack[--sp], x = j % w, y = (j - x) / w; px.push(j); if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y;
+        for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= w) continue; const k = yy * w + xx; if (tag[k] === 1) { tag[k] = 2; stack[sp++] = k; } } } }
+      const ph = by - ay + 1, pw = bx - ax + 1;
+      // 곧고 가는 조각은 짧은 표 칸막이·밑줄 같은 인쇄 선일 수 있어서 남겨요.
+      if (Math.min(pw, ph) <= 0.2 * Math.max(pw, ph)) continue;
+      // 표·상자 선에 닿아 있던 작은 조각: 인쇄 글줄 밖에 있고 이 쪽 인쇄보다 확실히 옅으면 연필이에요.
+      if (ph <= win * 1.15) {
+        if (!cLn[label[i]] || Math.max(ph, bx - ax + 1) < 0.6 * pageH || band[((ay + by) >> 1) * w + ((ax + bx) >> 1)]) continue;
+        let pm = 255; for (const j of px) if (lum[j] < pm) pm = lum[j];
+        if (pm > pageInk + 40) { for (const j of px) if (!(colorMask && colorMask[j] === 2)) m[j] = 1; any = true; }
+        continue;
+      }
+      // 가는 세로 기호(괄호, 대괄호)는 끝이 옅게 찍히기도 해서 건드리지 않아요.
+      if (bx - ax < 0.8 * pageH) continue;
+      const rows = new Int32Array(ph); for (const j of px) rows[((j / w) | 0) - ay]++;
+      let best = 0, bestY = 0, run = 0;
+      for (let y = 0; y < ph; y++) { run += rows[y] - (y >= win ? rows[y - win] : 0); if (y >= win - 1 && run > best) { best = run; bestY = y - win + 1; } }
+      let inMin = 255, outMin = 255;
+      for (const j of px) { const y = ((j / w) | 0) - ay; if (y >= bestY && y < bestY + win) { if (lum[j] < inMin) inMin = lum[j]; } else if (lum[j] < outMin && !(colorMask && colorMask[j] === 2)) outMin = lum[j]; }
+      if (outMin <= inMin + 40 || outMin <= pageInk + 30) continue;
+      for (const j of px) { const y = ((j / w) | 0) - ay; if ((y < bestY || y >= bestY + win) && !(colorMask && colorMask[j] === 2)) { m[j] = 1; any = true; } }
+    }
+  }
   if (!any) return;
   // 지운 자국 둘레의 옅은 테두리까지 지워요. 진한 칸(인쇄 글씨)은 건드리지 않아요.
   const near = dilate(m, w, h, 2);
@@ -535,21 +829,34 @@ function removePencil(id, s, boost = 0) {
 
 /* ------------------------------------------------------------------ state */
 // 한 쪽(page)마다 원본, 보정값, 지우기 설정, 지우개 자국을 따로 들고 있어요.
-const S = { step: 'drop', pages: [], active: 0, brush: 28, tool: 'soft', scale: 1, hover: null, results: null, uploaded: false };
+const S = { step: 'drop', pages: [], active: 0, brush: 28, tool: 'soft', scale: 1, hover: null, results: null, uploaded: false, corner: null };
 const cur = () => S.pages[S.active];
 
-function newPage(cv, file) {
-  const src = shrinkCanvas(cv);
-  const p = { src, bg: buildBgGrid(src), quarter: 0, angle: 0, autoFix: true, bright: 0,
-    fx: { color: true, colorS: 50, pencil: true, pencilS: 55 }, strokes: [], corrected: null, geoKey: '', base: null, baseKey: '', final: null, name: file && file.name || '' };
-  ensureCorrected(p);
-  const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; p.geoKey = '';
-  ensureCorrected(p);
+async function newPage(cv, file) {
+  const orig = shrinkCanvas(cv);
+  const p = { orig, src: orig, bg: null, srcVer: 0, quarter: 0, angle: 0, autoFix: true, bright: 0, quad: null, file,
+    fx: { color: true, colorS: 50, pencil: true, pencilS: 50 }, strokes: [], corrected: null, geoKey: '', base: null, baseKey: '', final: null, name: file && file.name || '' };
+  await setQuad(p, detectQuad(orig));
   return p;
 }
-// 기울기·회전·밝기를 반영한 사진. 바뀌면 그 위의 지우기 결과도 다시 만들어요.
+// 종이 네 모서리(원래 사진의 비율 좌표)로 사진을 잘라 펴요. 해상도를 잃지 않도록 원본 파일을 크게 다시 읽어서 펴요.
+async function setQuad(p, quad) {
+  p.quad = quad;
+  if (quad) {
+    let big = null;
+    try { if (p.file) big = await fileToCanvas(p.file, 4200); } catch (e) { big = null; }
+    p.src = warpQuad(big || p.orig, quad);
+  } else p.src = p.orig;
+  p.bg = buildBgGrid(p.src); p.srcVer++; p.corrected = null;
+  autoAngle(p);
+}
+function autoAngle(p) {
+  p.angle = 0; ensureCorrected(p);
+  const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; ensureCorrected(p);
+}
+// 모서리·기울기·회전·밝기를 반영한 사진. 바뀌면 그 위의 지우기 결과도 다시 만들어요.
 function ensureCorrected(p) {
-  const key = [p.quarter, p.angle, p.autoFix, p.bright].join('|');
+  const key = [p.srcVer, p.quarter, p.angle, p.autoFix, p.bright].join('|');
   if (p.corrected && p.geoKey === key) return;
   const norm = p.autoFix ? applyNorm(p.src, p.bg, hiFromBright(p.bright)) : p.src;
   const c = renderFine(quarterCanvas(norm, p.quarter), p.angle);
@@ -561,8 +868,8 @@ function ensureBase(p) {
   const key = [p.geoKey, p.fx.color, p.fx.colorS, p.fx.pencil, p.fx.pencilS].join('|');
   if (p.base && p.baseKey === key) return;
   const w = p.corrected.width, h = p.corrected.height; const id = p.corrected.getContext('2d').getImageData(0, 0, w, h);
-  if (p.fx.color) removeColor(id, p.fx.colorS);
-  if (p.fx.pencil) removePencil(id, p.fx.pencilS);
+  const cm = p.fx.color ? removeColor(id, p.fx.colorS) : null;
+  if (p.fx.pencil) removePencil(id, p.fx.pencilS, 0, cm);
   const b = document.createElement('canvas'); b.width = w; b.height = h; b.getContext('2d').putImageData(id, 0, 0);
   p.base = b; p.baseKey = key;
 }
@@ -572,7 +879,7 @@ function softOf(p) {
   const key = [p.geoKey, p.fx.colorS, p.fx.pencilS].join('|');
   if (p.soft && p.softKey === key) return p.soft;
   const w = p.corrected.width, h = p.corrected.height, id = p.corrected.getContext('2d').getImageData(0, 0, w, h);
-  removeColor(id, p.fx.colorS); removePencil(id, p.fx.pencilS, 25);  // 문지른 곳은 조금 더 진한 연필까지 지워요
+  removePencil(id, p.fx.pencilS, 30, removeColor(id, p.fx.colorS));  // 문지른 곳은 더 진한 연필까지 지워요
   const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(id, 0, 0);
   p.soft = c; p.softKey = key; return c;
 }
@@ -631,7 +938,7 @@ async function addFiles(list) {
   const first = S.pages.length; let bad = 0;
   for (let i = 0; i < Math.min(files.length, room); i++) {
     toast('사진을 불러오는 중… ' + (i + 1) + ' / ' + Math.min(files.length, room), 0);
-    try { S.pages.push(newPage(await fileToCanvas(files[i]), files[i])); } catch (e) { bad++; }
+    try { S.pages.push(await newPage(await fileToCanvas(files[i]), files[i])); } catch (e) { bad++; }
     await new Promise(r => setTimeout(r));
   }
   hideToast();
@@ -643,6 +950,8 @@ async function addFiles(list) {
 function syncPanel() {
   const p = cur(); if (!p) return;
   $('#angle').value = p.angle; $('#angle-out').textContent = (p.angle > 0 ? '+' : '') + p.angle.toFixed(1) + '°';
+  $('#btn-corner-clear').disabled = !p.quad || !!S.corner;
+  $('#btn-corner-t').textContent = S.corner ? '맞춤 끝내기' : '모서리 맞추기'; $('#corner-note').hidden = !S.corner;
   $('#auto-fix').checked = p.autoFix; $('#bright').value = p.bright; $('#bright-out').textContent = String(p.bright);
   $('#fx-color').checked = p.fx.color; $('#fx-color-s').value = p.fx.colorS;
   $('#fx-pencil').checked = p.fx.pencil; $('#fx-pencil-s').value = p.fx.pencilS;
@@ -651,10 +960,45 @@ function syncPanel() {
 }
 function draw() {
   const p = cur(); if (!p || $('#st2').hidden) return;
+  if (S.corner) { drawCorner(p); return; }
   renderFinal(p);
   const cv = $('#cv'); const { ctx, scale, cw, ch } = fitCanvas(cv, p.final.width, p.final.height, $('#stage'));
   S.scale = scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(p.final, 0, 0, cw, ch);
   if (S.hover) { ctx.strokeStyle = S.tool === 'restore' ? tok('--focus') : tok('--accent'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(S.hover.x * scale, S.hover.y * scale, Math.max(3, S.brush / 2), 0, Math.PI * 2); ctx.stroke(); }
+}
+/* 모서리 맞추기: 90° 돌린 화면 그대로 보여 주고, 네 점을 끌어 종이 모서리에 맞춰요. */
+function startCorner(p) {
+  const view = quarterCanvas(p.orig, p.quarter), q = p.quarter;
+  const pts = [[0.04, 0.04], [0.96, 0.04], [0.96, 0.96], [0.04, 0.96]];
+  if (p.quad) p.quad.forEach((pt, i) => { pts[(i + q) % 4] = quarterPt(pt, q); });
+  S.corner = { view, pts, drag: -1 }; S.hover = null;
+}
+function finishCorner(apply) {
+  const p = cur(), c = S.corner; S.corner = null; if (!p || !c) { redraw(); return; }
+  if (!apply) { redraw(); return; }
+  // 점이 엇갈려도 왼위·오위·오아래·왼아래 순서로 다시 세워요.
+  const cx = c.pts.reduce((a, t) => a + t[0], 0) / 4, cy = c.pts.reduce((a, t) => a + t[1], 0) / 4;
+  const byAng = [...c.pts].sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  let k = 0; byAng.forEach((t, i) => { if (t[0] + t[1] < byAng[k][0] + byAng[k][1]) k = i; });
+  const view = [0, 1, 2, 3].map(i => byAng[(k + i) % 4]), q = p.quarter;
+  const quad = [0, 1, 2, 3].map(i => unquarterPt(view[(i + q) % 4], q));
+  changeQuad(p, quad);
+}
+async function changeQuad(p, quad) {
+  toast('사진을 펴는 중…', 0);
+  await new Promise(r => setTimeout(r, 30));
+  const had = p.strokes.length; await setQuad(p, quad); p.strokes = [];
+  hideToast(); if (had) toast('사진이 바뀌어서 지우개 자국을 비웠어요.');
+  redraw();
+}
+function drawCorner(p) {
+  const c = S.corner, v = c.view, cv = $('#cv');
+  const { ctx, scale, cw, ch } = fitCanvas(cv, v.width, v.height, $('#stage'));
+  S.scale = scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.drawImage(v, 0, 0, cw, ch);
+  const P = c.pts.map(([x, y]) => [x * cw, y * ch]);
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.rect(0, 0, cw, ch); ctx.moveTo(...P[0]); for (let i = 3; i >= 0; i--) ctx.lineTo(...P[i]); ctx.closePath(); ctx.fill('evenodd');
+  ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 2; ctx.beginPath(); P.forEach((t, i) => i ? ctx.lineTo(...t) : ctx.moveTo(...t)); ctx.closePath(); ctx.stroke();
+  P.forEach(([x, y], i) => { ctx.beginPath(); ctx.arc(x, y, i === c.drag ? 11 : 9, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke(); });
 }
 function drawThumb(c, p) {
   const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
@@ -667,7 +1011,7 @@ function renderStrip() {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'thumb' + (i === S.active ? ' on' : ''); b.setAttribute('aria-label', (i + 1) + '쪽');
     const c = document.createElement('canvas'); c.width = 144; c.height = 192; drawThumb(c, p); b.append(c);
     const n = document.createElement('span'); n.textContent = i + 1; b.append(n);
-    b.onclick = () => { S.active = i; renderStrip(); showPage(); };
+    b.onclick = () => { S.corner = null; S.active = i; renderStrip(); showPage(); };
     el.append(b);
   });
   if (S.pages.length < MAX_PAGES) {
@@ -680,7 +1024,7 @@ function showPage() { syncPanel(); draw(); }
 const redraw = raf(() => { draw(); refreshThumb(); syncPanel(); });
 // 사진 모양이 바뀌면 지우개 자국 위치가 어긋나므로 지워요.
 function changeGeo(fn) {
-  const p = cur(); if (!p) return;
+  const p = cur(); if (!p) return; S.corner = null;
   const had = p.strokes.length; fn(p); if (had) { p.strokes = []; toast('사진이 바뀌어서 지우개 자국을 비웠어요.'); }
   redraw();
 }
@@ -688,15 +1032,23 @@ function bindStage() {
   const cv = $('#cv'); let st = null;
   const toImg = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / S.scale, y: (e.clientY - r.top) / S.scale }; };
   cv.style.cursor = 'crosshair';
+  const toFrac = e => { const r = cv.getBoundingClientRect(); return [clamp((e.clientX - r.left) / r.width, 0, 1), clamp((e.clientY - r.top) / r.height, 0, 1)]; };
+  const cornerDraw = raf(() => draw());
   cv.addEventListener('pointerdown', e => {
+    if (S.corner) {
+      const r = cv.getBoundingClientRect(), [fx, fy] = toFrac(e); let best = -1, bd = 1e9;
+      S.corner.pts.forEach(([x, y], i) => { const dd = Math.hypot((x - fx) * r.width, (y - fy) * r.height); if (dd < bd) { bd = dd; best = i; } });
+      if (bd <= 40) { S.corner.drag = best; cv.setPointerCapture(e.pointerId); draw(); }
+      e.preventDefault(); return;
+    }
     if (e.button > 0) return; const p = cur(); if (!p) return; cv.setPointerCapture(e.pointerId);
     const pt = toImg(e); st = { size: S.brush / S.scale, pts: [pt.x, pt.y], mode: S.tool }; p.strokes.push(st); S.hover = pt; draw(); e.preventDefault();
   });
   const move = raf(() => draw());
-  cv.addEventListener('pointermove', e => { const pt = toImg(e); S.hover = pt; if (st) st.pts.push(pt.x, pt.y); move(); });
-  const end = () => { if (!st) return; st = null; refreshThumb(); syncPanel(); draw(); };
+  cv.addEventListener('pointermove', e => { if (S.corner) { if (S.corner.drag >= 0) { S.corner.pts[S.corner.drag] = toFrac(e); cornerDraw(); } return; } const pt = toImg(e); S.hover = pt; if (st) st.pts.push(pt.x, pt.y); move(); });
+  const end = () => { if (S.corner) { S.corner.drag = -1; draw(); return; } if (!st) return; st = null; refreshThumb(); syncPanel(); draw(); };
   cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
-  cv.addEventListener('pointerleave', () => { S.hover = null; if (!st) draw(); });
+  cv.addEventListener('pointerleave', () => { S.hover = null; if (!st && !S.corner) draw(); });
 }
 
 /* ------------------------------------------------------------------ step 3: info & finish */
@@ -708,6 +1060,7 @@ function loadMeta() {
 }
 function readMeta() { const m = {}; META.forEach(k => { m[k] = $('#m-' + k).value.trim(); }); return m; }
 function enterStep3() {
+  S.corner = null;
   const box = $('#preview'); box.innerHTML = '';
   S.pages.forEach(p => { renderFinal(p); const im = new Image(); im.alt = ''; im.src = p.final.toDataURL('image/jpeg', 0.6); box.append(im); });
   loadMeta(); setStep('3');
@@ -718,7 +1071,7 @@ async function buildResults() {
   for (const p of S.pages) {
     renderFinal(p);
     const clean = await blobOf(p.final, 'image/jpeg', 0.92);
-    const orig = await blobOf(p.src, 'image/jpeg', 0.88);
+    const orig = await blobOf(p.orig, 'image/jpeg', 0.88);
     out.push({ clean, orig, url: URL.createObjectURL(clean), w: p.final.width, h: p.final.height });
   }
   return out;
@@ -922,9 +1275,11 @@ function bind() {
 
   const slow = debounce(fn => fn(), 120);
   $('#angle').oninput = e => { const v = +e.target.value; $('#angle-out').textContent = (v > 0 ? '+' : '') + v.toFixed(1) + '°'; slow(() => changeGeo(p => { p.angle = v; })); };
-  $('#btn-auto-angle').onclick = () => changeGeo(p => { p.angle = 0; p.geoKey = ''; ensureCorrected(p); const a = detectSkew(p.corrected); p.angle = Math.abs(a) < 0.3 ? 0 : a; });
+  $('#btn-auto-angle').onclick = () => changeGeo(autoAngle);
   $('#btn-rot-l').onclick = () => changeGeo(p => { p.quarter = (p.quarter + 3) % 4; p.angle = 0; });
   $('#btn-rot-r').onclick = () => changeGeo(p => { p.quarter = (p.quarter + 1) % 4; p.angle = 0; });
+  $('#btn-corner').onclick = () => { const p = cur(); if (!p) return; if (S.corner) finishCorner(true); else { startCorner(p); syncPanel(); draw(); } };
+  $('#btn-corner-clear').onclick = () => { const p = cur(); if (p) { S.corner = null; changeQuad(p, null); } };
   $('#auto-fix').onchange = e => changeGeo(p => { p.autoFix = e.target.checked; });
   $('#bright').oninput = e => { $('#bright-out').textContent = e.target.value; const v = +e.target.value; slow(() => changeGeo(p => { p.bright = v; })); };
   $('#fx-color').onchange = e => { cur().fx.color = e.target.checked; redraw(); };
@@ -942,6 +1297,7 @@ function bind() {
   $('#brush').oninput = e => { S.brush = +e.target.value; $('#brush-out').textContent = e.target.value; };
   $('#btn-undo').onclick = () => { const p = cur(); if (p && p.strokes.length) { p.strokes.pop(); redraw(); } };
   $('#btn-del-page').onclick = () => {
+    S.corner = null;
     S.pages.splice(S.active, 1);
     if (!S.pages.length) { setStep('drop'); return; }
     S.active = Math.min(S.active, S.pages.length - 1); renderStrip(); showPage();
