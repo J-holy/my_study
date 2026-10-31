@@ -38,5 +38,8 @@ Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `/ (root
 - 오답노트: `https://j-holy.github.io/my_study/#odap-note`
 - 깨끗한 시험지: `https://j-holy.github.io/my_study/#clean-sheet`
 
+## 후원 버튼과 쿠팡 파트너스
+`support.js` 맨 위 `SUPPORT` 에 후원 링크(토스, 카카오페이, Buy Me a Coffee)와 쿠팡 파트너스 상품 링크를 채우면 홈, 사용법, 소개 페이지 아래에 나타납니다. 비어 있으면 아무것도 보이지 않습니다. 쿠팡 상품이 있으면 공정위 안내 문구가 자동으로 붙습니다.
+
 ## 도메인과 광고
 도메인 연결과 애드센스 신청 순서는 [`docs/DOMAIN_AND_ADS.md`](docs/DOMAIN_AND_ADS.md) 에 있습니다.
