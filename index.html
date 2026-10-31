@@ -3,8 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="영어 단어 시험지, 오답노트, 깨끗한 시험지를 만드는 공부 도구 모음">
-<title>my_study</title>
+<meta name="description" content="교재 사진으로 영어 단어 시험지를 만들고, 틀린 문제만 모아 오답노트를 만들고, 필기를 지워 깨끗한 시험지를 다시 뽑는 무료 공부 도구 모음이에요.">
+<title>my_study · 영어 단어 시험지, 오답노트 만들기</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="my_study">
+<meta property="og:title" content="my_study · 영어 단어 시험지, 오답노트 만들기">
+<meta property="og:description" content="교재 사진으로 단어 시험지를 만들고, 틀린 문제만 모아 오답노트를 만들고, 필기를 지워 깨끗한 시험지를 다시 뽑는 무료 공부 도구">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -40,6 +45,9 @@ a.item:hover,a.item:focus-visible{border-color:var(--ink);outline:none}
 .chev{flex:none;width:18px;height:18px;color:var(--mute);transition:transform .15s,color .15s}
 a.item:hover .chev{transform:translateX(2px);color:var(--ink)}
 footer{margin-top:40px;color:var(--mute);font-size:13px}
+.links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:16px;font-size:13px}
+.links a{color:var(--mute);text-underline-offset:3px}
+.links a:hover{color:var(--ink)}
 .ver{margin-top:8px;color:var(--mute);font-size:12px}
 @media (max-width:480px){#home{padding-top:48px}a.item{padding:16px}}
 
@@ -89,6 +97,7 @@ footer{margin-top:40px;color:var(--mute);font-size:13px}
     </a>
   </div>
   <footer>단어 시험지와 오답노트 작업은 이 브라우저에만 저장돼요. 깨끗한 시험지는 완성할 때 올린 사진이 서버에 보관되고, 관리자만 볼 수 있어요.</footer>
+  <nav class="links" aria-label="사이트 정보"><a href="guide/">사용법</a><a href="about/">소개</a><a href="privacy/">개인정보처리방침</a><a href="about/#contact">문의</a></nav>
   <p class="ver">버전 v1.08 · 2026-10-30</p>
 </main>
 

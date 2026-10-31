@@ -1,0 +1,33 @@
+/* 소개 · 사용법 · 개인정보처리방침 같은 글 페이지에서 함께 쓰는 스타일 */
+:root{--bg:#fafafa;--surface:#fff;--ink:#18181b;--mute:#71717a;--line:#e4e4e7;--hover:#f4f4f5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f0f11;--surface:#18181b;--ink:#f4f4f5;--mute:#a1a1aa;--line:#27272a;--hover:#1f1f23}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:anywhere}
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:20px;height:52px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+.bar nav{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none}
+.bar nav::-webkit-scrollbar{display:none}
+.bar nav a{color:var(--mute);font-size:14px;font-weight:500;text-decoration:none;white-space:nowrap}
+.bar nav a:hover,.bar nav a[aria-current="page"]{color:var(--ink)}
+main{max-width:720px;margin:0 auto;padding:56px 16px 48px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px;line-height:1.4}
+h2{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:44px 0 10px;line-height:1.45}
+h3{font-size:16px;font-weight:700;margin:28px 0 6px}
+p,li{font-size:15px}
+p{margin:0 0 14px}
+ul,ol{padding-left:22px;margin:0 0 14px}
+li{margin:4px 0}
+a{color:var(--ink);text-underline-offset:3px}
+.lead{color:var(--mute);margin-bottom:8px}
+.meta{color:var(--mute);font-size:13px}
+.toc{margin:28px 0 0;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.toc ol{margin:0}
+table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:700;white-space:nowrap}
+.go{display:inline-block;margin-top:4px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:500;text-decoration:none}
+.go:hover{border-color:var(--ink)}
+.foot{max-width:720px;margin:0 auto;padding:24px 16px 48px;border-top:1px solid var(--line);color:var(--mute);font-size:13px}
+.foot a{color:var(--mute);margin-right:14px}
+.foot a:hover{color:var(--ink)}
+@media (max-width:480px){main{padding-top:40px}h1{font-size:23px}}
