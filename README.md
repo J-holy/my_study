@@ -9,6 +9,7 @@
 | `clean-sheet/` | 깨끗한 시험지 만들기 | 이 저장소에서 만들었습니다 (사진 보정·필기 지우기 코드는 오답노트에서 복사) |
 
 - `index.html`: 상단 탭과 홈 화면. 각 앱은 탭 안에 열립니다 (`#word-test`, `#odap-note`, `#clean-sheet`).
+- `about/`, `guide/`, `privacy/`: 소개(문의), 사용법, 개인정보처리방침 글 페이지. 공통 스타일은 `site.css`.
 - `shell.js`: 앱 주소(`/word-test/`, `/odap-note/`)로 바로 들어오면 탭이 있는 첫 화면으로 옮겨 줍니다. 두 앱의 `<head>` 첫 줄에서 불러옵니다.
 
 모든 앱은 빌드 없이 HTML 파일로 동작합니다.
@@ -36,3 +37,6 @@ Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `/ (root
 - 단어 시험지: `https://j-holy.github.io/my_study/#word-test`
 - 오답노트: `https://j-holy.github.io/my_study/#odap-note`
 - 깨끗한 시험지: `https://j-holy.github.io/my_study/#clean-sheet`
+
+## 도메인과 광고
+도메인 연결과 애드센스 신청 순서는 [`docs/DOMAIN_AND_ADS.md`](docs/DOMAIN_AND_ADS.md) 에 있습니다.
