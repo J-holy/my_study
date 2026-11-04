@@ -96,10 +96,9 @@ tr.w td{height:38px}
 <div class="mute" style="font-size:12px;margin-top:4px">사진은 글자를 읽기 위해 운영자의 서버로 보내져요. 서버는 사진을 파일로 저장하지 않고, 읽은 글자 결과만 최대 1시간 동안 메모리에 둬요.</div>
 <div class="row" style="margin-top:6px"><label style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="colUse" style="margin-top:3px"><span><b>단어·뜻 칸을 직접 지정해서 읽기</b> <span class="mute">(먼저 끄고 자동으로 읽어 보세요. 자동으로 틀릴 때만 켜세요 · 사진·스캔 쪽을 올리면 칸을 그리는 화면이 나와요. 같은 책이면 지난번 칸이 미리 그려져 있어 확인만 하면 돼요)</span></span></label></div>
 <details id="srvBox" style="margin-top:6px"><summary><b>내 서버(라즈베리파이)로 글자 읽기</b> <span class="mute" id="srvSt"></span></summary>
-<div class="row"><label><input type="checkbox" id="srvUse"> 내 서버로 읽기 (끄면 이 브라우저에서 읽어요)</label></div>
 <div class="row"><span class="mute">서버 주소</span><input type="text" id="srvUrl" placeholder="https://pi.xxxx.ts.net" style="flex:1;min-width:200px" autocomplete="off"></div>
 <div class="row"><span class="mute">비밀번호</span><input type="password" id="srvTok" style="flex:1;min-width:160px" autocomplete="off"><button class="btn" id="srvTest" type="button">연결 확인</button></div>
-<div class="mute" id="srvMsg">기본으로 이 사이트의 서버가 글자를 읽어 줘요. 무료로 쓸 수 있는 양에는 제한이 있어요. 비밀번호는 서버 주인만 넣으면 돼요(넣으면 제한이 없어요). 서버를 쓸 수 없거나 제한을 넘으면 이 기기에서 읽어요.</div>
+<div class="mute" id="srvMsg">기본으로 이 사이트의 서버가 글자를 읽어 줘요. 무료로 쓸 수 있는 양에는 제한이 있어요. 비밀번호는 서버 주인만 넣으면 돼요(넣으면 제한이 없어요). 파이가 켜져 있으면 항상 서버로 읽고, 꺼져 있거나 제한을 넘으면 이 기기에서 읽어요.</div>
 <div class="row"><button class="btn" id="srvLink" type="button">다른 기기(폰·태블릿)용 연결 링크 만들기</button></div><div class="row"><input type="text" id="srvLinkOut" readonly hidden style="flex:1;min-width:200px"></div></details>
 <div id="imsg" class="mute" role="status" style="min-height:20px"></div>
 <div id="pk" class="card" hidden style="margin-top:10px">
@@ -887,7 +886,7 @@ function parseDict(W,opt){opt=opt||{};var C=opt.cols||null;
 
 
 var TESS_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",ocrW=null,ocrLabel="";
-async function getOcr(){if(window.SRV&&SRV.on())return srvWorker();if(ocrW)return ocrW;
+async function getOcr(){if(window.SRV&&!SRV.bypass){var _m=null;try{_m=$("imsg");if(SRV.alive===null&&_m)_m.textContent="파이 서버가 켜져 있는지 확인하는 중..."}catch(e){}await srvProbe()}if(window.SRV&&SRV.on())return srvWorker();if(ocrW)return ocrW;
  try{await loadScript(TESS_URL);
   ocrW=await Tesseract.createWorker("kor+eng",1,{logger:function(m){var el=$("imsg");if(m.status==="recognizing text")el.textContent=ocrLabel+" 글자 인식 중 "+Math.round(m.progress*100)+"%";else el.textContent="OCR 준비 중... 처음에는 한글·영어 데이터를 내려받느라 시간이 걸려요."}})
  }catch(e){ocrW=null;throw new Error("ocr")}
@@ -945,11 +944,22 @@ async function ocrPdfWords(buf){var w=await getOcr2();await loadScript(PDF_URL);
 /*SRV-START*/
 var SRV_DEFAULT="https://pi.tail7271de.ts.net";
 var PRO_NOTE="";/* 유료 이용권 안내 문구를 넣으면 사용량 안내 끝에 붙어요. 비워 두면 안 보여요. */
-var SRV={url:"",tok:"",use:false,bypass:false,down:0,lim:null,limUntil:0,avg:0};try{var _s=JSON.parse(localStorage.getItem("wtm_srv")||"{}");SRV.url=_s.url||"";SRV.tok=_s.tok||"";SRV.use=!!_s.use;if(!SRV.url&&!_s.off){SRV.url=SRV_DEFAULT;SRV.use=true}}catch(e){SRV.url=SRV_DEFAULT;SRV.use=true}
+var SRV={url:"",tok:"",use:true,bypass:false,down:0,alive:null,chkAt:0,chkP:null,lim:null,limUntil:0,avg:0};try{var _s=JSON.parse(localStorage.getItem("wtm_srv")||"{}");SRV.url=_s.url||"";SRV.tok=_s.tok||"";SRV.use=true;if(!SRV.url)SRV.url=SRV_DEFAULT;if(_s.off||_s.use===false)localStorage.setItem("wtm_srv",JSON.stringify({url:SRV.url,tok:SRV.tok,use:true}))}catch(e){SRV.url=SRV_DEFAULT;SRV.use=true}
 try{var _hm=/^#srv=([^&]*)&tok=(.*)$/.exec(location.hash||"");if(_hm){SRV.url=decodeURIComponent(_hm[1]);SRV.tok=decodeURIComponent(_hm[2]);SRV.use=true;localStorage.setItem("wtm_srv",JSON.stringify({url:SRV.url,tok:SRV.tok,use:true}));try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}}catch(e){}
 var ENG_SRV=false;
-SRV.on=function(){return SRV.use&&!SRV.bypass&&!!String(SRV.url).trim()};
-function srvSave(){try{localStorage.setItem("wtm_srv",JSON.stringify({url:SRV.url,tok:SRV.tok,use:SRV.use,off:!SRV.use}))}catch(e){}}
+SRV.on=function(){return !SRV.bypass&&SRV.alive===true&&!!String(SRV.url).trim()};
+/* 파이가 켜져 있으면(연결 확인에 답하면) 항상 서버로 읽고, 답이 없을 때만 이 기기에서 읽어요. 결과는 잠깐 기억해요. */
+function srvProbe(force){if(!String(SRV.url).trim()){SRV.alive=false;srvStatus();return Promise.resolve(false)}
+ var age=Date.now()-SRV.chkAt;if(!force&&SRV.alive!==null&&age<(SRV.alive?60000:20000))return Promise.resolve(SRV.alive);
+ if(SRV.chkP)return SRV.chkP;
+ SRV.chkP=(async function(){var ok=false,ac=null,tm=null;
+  try{ac=typeof AbortController!=="undefined"?new AbortController():null;tm=ac?setTimeout(function(){ac.abort()},5000):null;
+   var r=await fetch(srvBase()+"/health",{headers:{"X-Token":SRV.tok},cache:"no-store",signal:ac?ac.signal:undefined});
+   if(r.ok){var j=await r.json();ok=!!(j&&j.ok)}}catch(e){ok=false}finally{if(tm)clearTimeout(tm)}
+  SRV.alive=ok;SRV.chkAt=Date.now();if(ok)SRV.down=0;SRV.chkP=null;srvStatus();return ok})();
+ return SRV.chkP}
+function srvDead(){SRV.down=Date.now();SRV.alive=false;SRV.chkAt=Date.now();srvStatus()}
+function srvSave(){try{localStorage.setItem("wtm_srv",JSON.stringify({url:SRV.url,tok:SRV.tok,use:true}))}catch(e){}}
 function devId(){var re=/^[A-Za-z0-9_-]{8,64}$/,d="";try{d=localStorage.getItem("wtm_dev")||""}catch(e){}
  if(!re.test(d)){var a="abcdefghijklmnopqrstuvwxyz0123456789",i;d="";try{var u=new Uint8Array(22);crypto.getRandomValues(u);for(i=0;i<22;i++)d+=a[u[i]%36]}catch(e){d="";for(i=0;i<22;i++)d+=a[Math.floor(Math.random()*36)]}
   try{localStorage.setItem("wtm_dev",d)}catch(e){SRV.mem=SRV.mem||d;d=SRV.mem}}
@@ -974,14 +984,14 @@ function srvWorker(){return{setParameters:function(){return Promise.resolve()},r
   try{tick=setInterval(function(){try{$("imsg").textContent=(ocrLabel||"")+" 서버에서 글자 읽는 중... "+Math.round((Date.now()-t0)/1000)+"초"+(SRV.avg?" (보통 "+SRV.avg+"초 안팎)":"")}catch(e){}},1000)}catch(e){}
   try{var ac=typeof AbortController!=="undefined"?new AbortController():null,tm=ac?setTimeout(function(){ac.abort()},150000):null;
    r=await fetch(srvBase()+"/ocr",{method:"POST",headers:{"X-Token":SRV.tok,"X-Device":devId(),"Content-Type":"application/octet-stream"},body:b,signal:ac?ac.signal:undefined});if(tm)clearTimeout(tm)}
-  catch(e){SRV.down=Date.now();return srvTess(c,"서버에 연결하지 못했어요.")}
+  catch(e){srvDead();return srvTess(c,"서버에 연결하지 못했어요.")}
   finally{if(tick)clearInterval(tick)}
   if(r.status===401)throw new Error("srvtok");
   if(r.status===429){var jj=null;try{jj=await r.json()}catch(e){}
    if(jj&&jj.kind==="busy")return srvTess(c,"지금 서버가 바빠요.");
    SRV.lim={which:jj&&jj.which,hour:jj&&jj.hour,day:jj&&jj.day};SRV.limUntil=Date.now()+((jj&&jj.retry)||600)*1000;
    return srvTess(c,srvLimitMsg()||"서버 사용량을 넘었어요.")}
-  if(!r.ok){SRV.down=Date.now();return srvTess(c,"서버가 오류를 냈어요.")}
+  if(!r.ok){srvDead();return srvTess(c,"서버가 오류를 냈어요.")}
   ENG_SRV=true;
   var j=await r.json();if(!j.cached){var el=Math.round((Date.now()-t0)/1000);SRV.avg=SRV.avg?Math.round(0.6*SRV.avg+0.4*el):el}
   var ws=srvFix(j.words||[]),byLn={};
@@ -1007,13 +1017,13 @@ function srvFix(ws){var by={},info={},hs=[],out=[];
   out.push(w)});
  return out}
 /*FIX-END*/
-function srvStatus(){var s=$("srvSt");if(s)s.textContent=SRV.on()?"· 사용 중":(SRV.url?"· 꺼짐":"· 설정 안 함")}
-(function(){var u=$("srvUrl"),t=$("srvTok"),c=$("srvUse");u.value=SRV.url;t.value=SRV.tok;c.checked=SRV.use;srvStatus();
- function sv(){SRV.url=u.value.trim();SRV.tok=t.value;SRV.use=c.checked;srvSave();srvStatus()}
- u.oninput=t.oninput=c.onchange=sv;
+function srvStatus(){var s=$("srvSt");if(s)s.textContent=!String(SRV.url).trim()?"· 주소 없음 (이 기기에서 읽어요)":SRV.alive===true?"· 켜짐 (서버로 읽어요)":SRV.alive===false?"· 꺼짐 (이 기기에서 읽어요)":"· 확인 중"}
+(function(){var u=$("srvUrl"),t=$("srvTok");u.value=SRV.url;t.value=SRV.tok;srvStatus();
+ function sv(){var ch=SRV.url!==u.value.trim()||SRV.tok!==t.value;SRV.url=u.value.trim();SRV.tok=t.value;srvSave();if(ch){SRV.alive=null;SRV.chkAt=0;srvStatus()}}
+ u.oninput=t.oninput=sv;u.onchange=t.onchange=function(){sv();srvProbe(true)};srvProbe();
  $("srvLink").onclick=function(){sv();var o=$("srvLinkOut"),m=$("srvMsg");if(!SRV.url||!SRV.tok){m.textContent="서버 주소와 비밀번호를 먼저 넣어 주세요.";return}var L=location.href.split("#")[0]+"#srv="+encodeURIComponent(SRV.url)+"&tok="+encodeURIComponent(SRV.tok);o.value=L;o.hidden=false;o.focus();o.select();try{navigator.clipboard.writeText(L).then(function(){m.textContent="링크를 복사했어요. 폰에서 이 링크를 열면 서버 설정이 자동으로 들어가요. (비밀번호가 들어 있으니 나만 아는 곳으로만 보내세요.)"},function(){m.textContent="아래 링크를 길게 눌러 복사해서 폰으로 보내세요. (비밀번호가 들어 있어요.)"})}catch(e){m.textContent="아래 링크를 복사해서 폰으로 보내세요. (비밀번호가 들어 있어요.)"}};
  $("srvTest").onclick=async function(){sv();var m=$("srvMsg");if(!SRV.url){m.textContent="서버 주소를 먼저 넣어 주세요.";return}m.textContent="연결 확인 중...";
-  try{var r=await fetch(srvBase()+"/health",{headers:{"X-Token":SRV.tok}}),j=await r.json();m.textContent=j.ok?("연결됐어요 (엔진: "+j.engine+") · "+(j.auth?"주인 비밀번호 맞음 (사용량 제한 없음)":(j.public?"공개 모드예요. 비밀번호 없이 쓸 수 있고 사용량 제한이 있어요"+(j.limits?" (기기당 1시간 "+j.limits.hour+"장, 하루 "+j.limits.day+"장)":"")+".":"비밀번호가 필요해요 — 서버의 OCR_TOKEN과 같게 넣어 주세요"))+(j.waiting?" · 지금 "+j.waiting+"장 읽는 중":"")):"서버가 응답했지만 상태가 이상해요."}
+  try{srvProbe(true);var r=await fetch(srvBase()+"/health",{headers:{"X-Token":SRV.tok}}),j=await r.json();m.textContent=j.ok?("연결됐어요 (엔진: "+j.engine+") · "+(j.auth?"주인 비밀번호 맞음 (사용량 제한 없음)":(j.public?"공개 모드예요. 비밀번호 없이 쓸 수 있고 사용량 제한이 있어요"+(j.limits?" (기기당 1시간 "+j.limits.hour+"장, 하루 "+j.limits.day+"장)":"")+".":"비밀번호가 필요해요 — 서버의 OCR_TOKEN과 같게 넣어 주세요"))+(j.waiting?" · 지금 "+j.waiting+"장 읽는 중":"")):"서버가 응답했지만 상태가 이상해요."}
   catch(e){m.textContent="연결하지 못했어요. 파이가 켜져 있는지, 이 기기에서 Tailscale이 켜져 있는지, 주소가 맞는지 확인해 주세요."}}})();
 /*SRV-END*/
 
@@ -1229,7 +1239,7 @@ async function lsScan(w,cv,W0){var W=cv.width,Hh=cv.height,sp=lsSplit(W0,W);if(!
  return{entries:ents,words:lw.concat(mw)}}
 function lsBest(list,strip){var fin=cdSane(vaFinish({entries:list},strip));return{m:"V",r:{entries:list},fin:fin,sc:scoreFin(fin)}}
 /*LIST-END*/
-async function importOne2(f){var name=f.name.toLowerCase();ENG_SRV=SRV.on();
+async function importOne2(f){var name=f.name.toLowerCase();await srvProbe();ENG_SRV=SRV.on();
  if(/\.(png|jpe?g|webp|bmp|gif|heic|heif)$/.test(name)){var cv=prepCanvas(await loadBitmap(f));ocrLabel=f.name;
   if($("colUse").checked&&BC===undefined){$("imsg").textContent="단어 칸과 뜻 칸을 사진 위에 그려 주세요.";BC=await askCols(cv)}
   var r=BC?await ocrCols(cv,BC):await ocrScan(cv,[3,6,11]);return{pages:[pgObj(r.words,f.name,Object.assign({thumb:thumbOf(r.cv),ex:false,cols:r.cols||null,list:r.list||null},bigOf(r.cv)))],rows:[]}}
@@ -1240,7 +1250,7 @@ async function importOne2(f){var name=f.name.toLowerCase();ENG_SRV=SRV.on();
 function errMsg(e,n){var t=e&&e.message;
  return t==="type"?n+": 지원하지 않는 형식이에요. 엑셀(xlsx, xls), CSV, TXT, PDF, 사진(png, jpg, heic)만 가능해요.":
  t==="ocr"?"글자 인식(OCR)을 시작하지 못했어요. 이 기능은 인터넷 연결이 필요하고, Claude 미리보기 화면에서는 작동하지 않을 수 있어요. 호스팅한 주소나 파일을 브라우저에서 직접 열어 다시 시도해 주세요.":
- t==="srv"?"내 서버에 연결하지 못했어요. 파이가 켜져 있는지, 이 기기에서 Tailscale이 켜져 있는지, 서버 주소가 맞는지 확인해 주세요. '내 서버로 읽기'를 끄면 브라우저에서 읽어요.":
+ t==="srv"?"내 서버에 연결하지 못했어요. 파이가 켜져 있는지, 이 기기에서 Tailscale이 켜져 있는지, 서버 주소가 맞는지 확인해 주세요.":
  t==="srvtok"?"내 서버 비밀번호가 맞지 않아요. 설정의 비밀번호를 서버의 OCR_TOKEN과 같게 넣어 주세요.":
  t==="load"?"파일을 읽는 도구를 내려받지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.":
  t==="img"?n+": 사진을 열지 못했어요. JPG나 PNG로 바꿔서 다시 시도해 주세요.":
@@ -1311,7 +1321,7 @@ function runRV(){if(!RV)return;var strip=$("rvStrip").checked,sub=$("rvSub").che
 function renderRV(){var m=$("imsg");
  if(!RV.items.length){$("rv").hidden=true;m.textContent="단어와 뜻을 찾지 못했어요. 사진이 흐리거나 너무 비스듬하면 인식이 어려워요. 정면에서 밝게 다시 찍거나, 스캔본이면 단어가 있는 쪽을 골라 다시 읽어 보세요.";return}
  var n=RV.items.filter(function(e){return!e.sub}).length,sub=RV.items.length-n,wr=RV.items.filter(function(e){return e.warn.length}).length,ex=RV.items.filter(function(e){return e.ex}).length;
- $("rvinfo").textContent=(RV.ncol?"지정한 칸(영어 단어·한글 뜻)만 읽었어요. ":RV.generic?"표 형식으로 읽었어요. ":"쪽마다 알맞은 읽기 방식(표제어·뜻 목록"+(RV.nv?" "+RV.nv+"쪽":"")+" / 그림 카드"+(RV.nc?" "+RV.nc+"쪽":"")+" / 열 표"+(RV.nt?" "+RV.nt+"쪽":"")+")을 골랐어요. ")+"단어 "+n+"개"+(sub?", 파생어 "+sub+"개":"")+(wr?" · 확인이 필요한 줄 "+wr+"개":"")+(ex?" · 문제 쪽으로 보이는 줄 "+ex+"개는 선택을 꺼 뒀어요":"")+(ENG_SRV?" · 내 서버(RapidOCR)로 읽었어요":(SRV.use?" · ⚠ "+(srvLimitMsg()||"서버를 쓰지 못해 이 기기에서 읽었어요. 정확도가 낮으니 잠시 뒤 다시 해 보세요")+(srvLimitMsg()?" 지금은 이 기기에서 읽어서 정확도가 낮아요.":""):" · ⚠ 이 기기 안의 기본 OCR로 읽었어요. 정확도가 낮으니 아래 '내 서버로 글자 읽기'를 켜 보세요"));
+ $("rvinfo").textContent=(RV.ncol?"지정한 칸(영어 단어·한글 뜻)만 읽었어요. ":RV.generic?"표 형식으로 읽었어요. ":"쪽마다 알맞은 읽기 방식(표제어·뜻 목록"+(RV.nv?" "+RV.nv+"쪽":"")+" / 그림 카드"+(RV.nc?" "+RV.nc+"쪽":"")+" / 열 표"+(RV.nt?" "+RV.nt+"쪽":"")+")을 골랐어요. ")+"단어 "+n+"개"+(sub?", 파생어 "+sub+"개":"")+(wr?" · 확인이 필요한 줄 "+wr+"개":"")+(ex?" · 문제 쪽으로 보이는 줄 "+ex+"개는 선택을 꺼 뒀어요":"")+(ENG_SRV?" · 내 서버(RapidOCR)로 읽었어요":(String(SRV.url).trim()?" · ⚠ "+(srvLimitMsg()?srvLimitMsg()+" 지금은 이 기기에서 읽어서 정확도가 낮아요.":"파이 서버가 꺼져 있거나 연결되지 않아 이 기기에서 읽었어요. 정확도가 낮으니 파이를 켜고(폰은 Tailscale도 켜고) 다시 읽어 보세요"):" · ⚠ 이 기기 안의 기본 OCR로 읽었어요. 정확도가 낮으니 아래에 내 서버 주소를 넣어 보세요"));
  var mw=$("rvMiss");if(!mw){mw=document.createElement("div");mw.id="rvMiss";mw.style.cssText="margin:6px 0;padding:8px 10px;border:1px solid #d9822b;border-radius:8px;background:rgba(217,130,43,.12);font-size:14px";$("rvinfo").parentNode.insertBefore(mw,$("rvinfo").nextSibling)}
  mw.hidden=!(RV.miss&&RV.miss.length);mw.textContent=RV.miss&&RV.miss.length?"⚠ 번호는 보이는데 단어를 읽지 못한 줄이 있어요: "+RV.miss.join(" / ")+". 이 번호의 단어는 위쪽 입력창에 직접 적어 주세요.":"";
  $("rvSlWrap").hidden=RV.generic||!RV.nv;$("rvSlv").textContent=$("rvSl").value+"%";

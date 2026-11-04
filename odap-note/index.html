@@ -748,8 +748,8 @@ function runSuggest() {
 const SRV_DEFAULT = 'https://pi.tail7271de.ts.net';
 function srvConf() {
   let s = {}; try { s = JSON.parse(localStorage.getItem('wtm_srv') || '{}'); } catch (e) {}
-  // 단어 시험지와 같은 규칙: 저장된 주소가 없고 꺼 두지 않았으면 기본 서버를 써요.
-  const on = s.url ? !!s.use : !s.off;
+  // 단어 시험지와 같은 규칙: 서버를 끄는 설정은 없고, 주소가 없으면 기본 서버를 써요.
+  const on = true;
   const url = String(s.url || SRV_DEFAULT).trim().replace(/\/+$/, '');
   return { on: on && !!url, url, tok: s.tok || '' };
 }
@@ -766,7 +766,7 @@ function updateSrvUI() {
   $('#btn-srv-split').disabled = !c.on;
   $('#srv-note').textContent = c.on
     ? '단어 시험지와 같은 라즈베리파이 서버로 "1." "2." 같은 문제 번호를 읽어서 나눠요. 이 버튼을 누를 때만 사진이 서버로 보내지고, 서버는 사진을 저장하지 않아요.'
-    : '서버가 꺼져 있어요. 단어 시험지 탭의 서버 설정에서 켜면 여기서도 같이 쓸 수 있어요.';
+    : '서버 주소가 없어요. 단어 시험지 탭의 서버 설정에서 주소를 넣으면 여기서도 같이 쓸 수 있어요.';
 }
 async function srvOcr(cv) {
   const c = srvConf(); if (!c.on) throw Object.assign(new Error('off'), { kind: 'off' });
