@@ -396,8 +396,8 @@ function vTidy(x){x=x.replace(/\s+[A-Za-z0-9\[\]|@®©&]{1,4}(?=\s|$)/g,"").repl
  x=x.replace(/(^|\s)([가-힣])\s(?=[가-힣])/g,"$1$2").replace(/(^|\s)([가-힣])\s(?=[가-힣])/g,"$1$2");return x.trim()}
 function vEnCut(s){s=s.replace(/(^|[,;)\]]|[가-힣])[V@®©](?=\s*\d?[.)]?\s*[가-힣~(\[])/g,"$1 ; ").replace(/(^|\s)[A-Za-z][A-Za-z'’\-]{2,}\s*[:：].*$/,"$1").replace(/(^|\s)[a-z][a-z'’\-]{2,}\s*[,，].*$/,"$1").replace(/^[a-z][a-z'’\-]{2,}(?:\s+[a-z][a-z'’\-]{1,})*[가-힣].*$/,"");return s.trim()}
 function vSegs(s,strip){
- s=vEnCut(vCleanKo(s,strip)).replace(/(^|[\s,;가-힣)\]])(?:vt|vi|en|n|v|a)\.?(?=[가-힣~(\[])/g,"$1 ; ").replace(/(^|[\s가-힣)\]])\d{1,2}[.)](?=[가-힣~(\[])/g,"$1 ; ").replace(/[\u24D0-\u24E9\u24B6-\u24CF]/g," ; ").replace(/(^|\s)[@®©]{1,2}(?=\s|$)/g," ; ").replace(/(^|\s)\d{1,2}[.)]\s+/g," ; ").replace(/([가-힣])\.(?:\s+(?=[가-힣~])|(?=~))/g,"$1, ");
- var seg=splitMeanings(s).map(vTidy).map(function(x){return x.replace(/^(?:[\s.;:\-]|\d+(?![가-힣]))+|[\s;:,.\-]+$/g,"").replace(/^~\s+/,"").trim()}).filter(function(x){return vHan(x)&&x.length>=1});
+ s=vEnCut(vCleanKo(s,strip)).replace(/[√✓]/g," ; ").replace(/(^|[\s,;가-힣)\]])(?:vt|vi|en|n|v|a)\.?(?=[가-힣~(\[]|\d[.)][가-힣~(\[])/g,"$1 ; ").replace(/(^|[\s가-힣)\]])\d{1,2}[.)](?=[가-힣~(\[])/g,"$1 ; ").replace(/[\u24D0-\u24E9\u24B6-\u24CF]/g," ; ").replace(/(^|\s)[@®©]{1,2}(?=\s|$)/g," ; ").replace(/(^|\s)\d{1,2}[.)]\s+/g," ; ").replace(/([가-힣])\.(?:\s+(?=[가-힣~])|(?=~))/g,"$1, ");
+ var seg=splitMeanings(s).map(vTidy).map(function(x){return x.replace(/^(?:[\s.;:\-]|\d+(?![\d가-힣]))+|[\s;:,.\-]+$/g,"").replace(/^~\s+/,"").trim()}).filter(function(x){return vHan(x)&&x.length>=1});
  var seen={};return seg.filter(function(x){if(seen[x])return false;seen[x]=1;return true})}
 function vWarn(en,ko,conf,hc){var w=[];if(hc!=null&&hc<65)w.push("영어 확인");
  if(!/^[A-Za-z][A-Za-z\s'’\-\/.,\[\]()~]*[A-Za-z.\])]$/.test(en)&&!/^[A-Za-z]$/.test(en))w.push("영어");
